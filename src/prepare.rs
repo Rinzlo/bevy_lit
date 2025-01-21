@@ -15,8 +15,8 @@ use bevy::{
 
 use crate::{
     extract::{
-        BufferOccluder2dBufferSize, ExtractedLightOccluder2d, ExtractedLighting2dSettings,
-        ExtractedPointLight2d,
+        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
+        Occluder2dBufferSize, PointLight2dBufferSize,
     },
     pipeline::{Lighting2dPipelineKey, Lighting2dPrepassPipelines, PostProcessPipeline},
 };
@@ -111,7 +111,8 @@ pub fn prepare_lighting_bind_groups(
     render_device: Res<RenderDevice>,
     view_uniforms: Res<ViewUniforms>,
     light_settings: Res<ComponentUniforms<ExtractedLighting2dSettings>>,
-    occluder_header: Res<ComponentUniforms<BufferOccluder2dBufferSize>>,
+    occluders_buffer_size: Res<ComponentUniforms<Occluder2dBufferSize>>,
+    point_lights_buffer_size: Res<ComponentUniforms<PointLight2dBufferSize>>,
     point_lights: Res<GpuArrayBuffer<ExtractedPointLight2d>>,
     light_occluders: Res<GpuArrayBuffer<ExtractedLightOccluder2d>>,
     views_query: Query<(Entity, &Lighting2dAuxiliaryTextures), With<ExtractedLighting2dSettings>>,
@@ -119,15 +120,17 @@ pub fn prepare_lighting_bind_groups(
     let (
         Some(view_uniform),
         Some(lighting_settings),
-        Some(occluder_header),
+        Some(occluder_buffer_size),
         Some(light_occluders),
         Some(point_lights),
+        Some(point_lights_buffer_size),
     ) = (
         view_uniforms.uniforms.binding(),
         light_settings.binding(),
-        occluder_header.binding(),
+        occluders_buffer_size.binding(),
         light_occluders.binding(),
         point_lights.binding(),
+        point_lights_buffer_size.binding(),
     )
     else {
         return;
@@ -143,7 +146,7 @@ pub fn prepare_lighting_bind_groups(
                 &BindGroupEntries::sequential((
                     view_uniform.clone(),
                     light_occluders.clone(),
-                    occluder_header.clone(),
+                    occluder_buffer_size.clone(),
                 )),
             ),
             lighting: render_device.create_bind_group(
@@ -155,6 +158,7 @@ pub fn prepare_lighting_bind_groups(
                     point_lights.clone(),
                     &aux_textures.sdf.default_view,
                     &sampler,
+                    point_lights_buffer_size.clone(),
                 )),
             ),
             blur: render_device.create_bind_group(

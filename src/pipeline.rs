@@ -20,8 +20,8 @@ use bevy::{
 
 use crate::{
     extract::{
-        BufferOccluder2dBufferSize, ExtractedLightOccluder2d, ExtractedLighting2dSettings,
-        ExtractedPointLight2d,
+        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
+        Occluder2dBufferSize, PointLight2dBufferSize,
     },
     prepare::{
         Lighting2dAuxiliaryTextures, Lighting2dPostProcessPipelineId, Lighting2dSurfaceBindGroups,
@@ -85,7 +85,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 (
                     uniform_buffer::<ViewUniform>(true),
                     GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(render_device),
-                    uniform_buffer::<BufferOccluder2dBufferSize>(true),
+                    uniform_buffer::<Occluder2dBufferSize>(true),
                 ),
             ),
         );
@@ -103,6 +103,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                     GpuArrayBuffer::<ExtractedPointLight2d>::binding_layout(render_device),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
+                    uniform_buffer::<PointLight2dBufferSize>(true),
                 ),
             ),
         );
@@ -216,7 +217,8 @@ impl ViewNode for LightingNode {
         Read<Lighting2dAuxiliaryTextures>,
         Read<Lighting2dSurfaceBindGroups>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
-        Read<DynamicUniformIndex<BufferOccluder2dBufferSize>>,
+        Read<DynamicUniformIndex<Occluder2dBufferSize>>,
+        Read<DynamicUniformIndex<PointLight2dBufferSize>>,
     );
 
     fn run<'w>(
@@ -230,7 +232,8 @@ impl ViewNode for LightingNode {
             aux_textures,
             bind_groups,
             settings_index,
-            header_index, // Add this
+            occlulders_buffer_size_index,
+            point_light_buffer_size_index,
         ): QueryItem<'w, Self::ViewQuery>,
         world: &'w World,
     ) -> Result<(), NodeRunError> {
@@ -269,7 +272,7 @@ impl ViewNode for LightingNode {
             ..default()
         });
 
-        let mut dynamic_offset = vec![view_uniform.offset, header_index.index()];
+        let mut dynamic_offset = vec![view_uniform.offset, occlulders_buffer_size_index.index()];
         if !storage_buffer_support {
             dynamic_offset.push(0);
         }
@@ -291,7 +294,11 @@ impl ViewNode for LightingNode {
             ..default()
         });
 
-        let mut dynamic_offset = vec![view_uniform.offset, settings_index.index()];
+        let mut dynamic_offset = vec![
+            view_uniform.offset,
+            settings_index.index(),
+            point_light_buffer_size_index.index(),
+        ];
         if !storage_buffer_support {
             dynamic_offset.push(0);
         }

@@ -73,12 +73,11 @@ pub fn extract_light_occluders(
         };
 
         occluders.push(extracted.clone());
-
         commands.entity(render_entity).insert(extracted);
     }
 
     if let Ok(camera) = camera_query.get_single() {
-        commands.insert_or_spawn_batch([(camera, BufferOccluder2dBufferSize {
+        commands.insert_or_spawn_batch([(camera, Occluder2dBufferSize {
             size: occluders.len() as u32,
         })]);
     }
@@ -103,7 +102,10 @@ pub fn extract_point_lights(
             &ViewVisibility,
         )>,
     >,
+    camera_query: Query<Entity, With<Camera>>,
 ) {
+    let mut lights = Vec::new();
+
     for (render_entity, point_light, transform, visibility) in point_lights_query.iter() {
         if !visibility.get() {
             commands
@@ -113,19 +115,31 @@ pub fn extract_point_lights(
             continue;
         }
 
-        commands
-            .entity(render_entity)
-            .insert(ExtractedPointLight2d {
-                color: point_light.color.to_linear(),
-                center: transform.translation().xy(),
-                radius: point_light.radius,
-                intensity: point_light.intensity,
-                falloff: point_light.falloff,
-            });
+        let extracted = ExtractedPointLight2d {
+            color: point_light.color.to_linear(),
+            center: transform.translation().xy(),
+            radius: point_light.radius,
+            intensity: point_light.intensity,
+            falloff: point_light.falloff,
+        };
+
+        lights.push(extracted.clone());
+        commands.entity(render_entity).insert(extracted);
+    }
+
+    if let Ok(camera) = camera_query.get_single() {
+        commands.insert_or_spawn_batch([(camera, PointLight2dBufferSize {
+            size: lights.len() as u32,
+        })]);
     }
 }
 
 #[derive(Component, ShaderType, Default, Clone)]
-pub struct BufferOccluder2dBufferSize {
+pub struct Occluder2dBufferSize {
+    pub size: u32,
+}
+
+#[derive(Component, ShaderType, Default, Clone)]
+pub struct PointLight2dBufferSize {
     pub size: u32,
 }
