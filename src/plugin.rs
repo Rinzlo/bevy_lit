@@ -14,8 +14,8 @@ use bevy::{
 
 use crate::{
     extract::{
-        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
-        LightOccluderHeader, extract_light_occluders, extract_lighting_settings,
+        BufferOccluder2dBufferSize, ExtractedLightOccluder2d, ExtractedLighting2dSettings,
+        ExtractedPointLight2d, extract_light_occluders, extract_lighting_settings,
         extract_point_lights,
     },
     pipeline::{
@@ -63,7 +63,7 @@ impl Plugin for Lighting2dPlugin {
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
-            UniformComponentPlugin::<LightOccluderHeader>::default(),
+            UniformComponentPlugin::<BufferOccluder2dBufferSize>::default(),
             GpuComponentArrayBufferPlugin::<ExtractedPointLight2d>::default(),
             GpuComponentArrayBufferPlugin::<ExtractedLightOccluder2d>::default(),
         ))

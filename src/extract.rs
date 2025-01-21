@@ -78,7 +78,7 @@ pub fn extract_light_occluders(
     }
 
     if let Ok(camera) = camera_query.get_single() {
-        commands.insert_or_spawn_batch([(camera, LightOccluderHeader {
+        commands.insert_or_spawn_batch([(camera, BufferOccluder2dBufferSize {
             size: occluders.len() as u32,
         })]);
     }
@@ -126,6 +126,6 @@ pub fn extract_point_lights(
 }
 
 #[derive(Component, ShaderType, Default, Clone)]
-pub struct LightOccluderHeader {
+pub struct BufferOccluder2dBufferSize {
     pub size: u32,
 }

@@ -15,8 +15,8 @@ use bevy::{
 
 use crate::{
     extract::{
-        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
-        LightOccluderHeader,
+        BufferOccluder2dBufferSize, ExtractedLightOccluder2d, ExtractedLighting2dSettings,
+        ExtractedPointLight2d,
     },
     pipeline::{Lighting2dPipelineKey, Lighting2dPrepassPipelines, PostProcessPipeline},
 };
@@ -111,7 +111,7 @@ pub fn prepare_lighting_bind_groups(
     render_device: Res<RenderDevice>,
     view_uniforms: Res<ViewUniforms>,
     light_settings: Res<ComponentUniforms<ExtractedLighting2dSettings>>,
-    occluder_header: Res<ComponentUniforms<LightOccluderHeader>>,
+    occluder_header: Res<ComponentUniforms<BufferOccluder2dBufferSize>>,
     point_lights: Res<GpuArrayBuffer<ExtractedPointLight2d>>,
     light_occluders: Res<GpuArrayBuffer<ExtractedLightOccluder2d>>,
     views_query: Query<(Entity, &Lighting2dAuxiliaryTextures), With<ExtractedLighting2dSettings>>,
