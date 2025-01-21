@@ -14,7 +14,10 @@ use bevy::{
 };
 
 use crate::{
-    extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
+    extract::{
+        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
+        LightOccluderHeader,
+    },
     pipeline::{Lighting2dPipelineKey, Lighting2dPrepassPipelines, PostProcessPipeline},
 };
 
@@ -108,16 +111,25 @@ pub fn prepare_lighting_bind_groups(
     render_device: Res<RenderDevice>,
     view_uniforms: Res<ViewUniforms>,
     light_settings: Res<ComponentUniforms<ExtractedLighting2dSettings>>,
+    occluder_header: Res<ComponentUniforms<LightOccluderHeader>>,
     point_lights: Res<GpuArrayBuffer<ExtractedPointLight2d>>,
     light_occluders: Res<GpuArrayBuffer<ExtractedLightOccluder2d>>,
     views_query: Query<(Entity, &Lighting2dAuxiliaryTextures), With<ExtractedLighting2dSettings>>,
 ) {
-    let (Some(view_uniform), Some(lighting_settings), Some(light_occluders), Some(point_lights)) = (
+    let (
+        Some(view_uniform),
+        Some(lighting_settings),
+        Some(occluder_header),
+        Some(light_occluders),
+        Some(point_lights),
+    ) = (
         view_uniforms.uniforms.binding(),
         light_settings.binding(),
+        occluder_header.binding(),
         light_occluders.binding(),
         point_lights.binding(),
-    ) else {
+    )
+    else {
         return;
     };
 
@@ -128,7 +140,11 @@ pub fn prepare_lighting_bind_groups(
             sdf: render_device.create_bind_group(
                 "sdf_bind_group",
                 &prepass_pipelines.sdf_layout,
-                &BindGroupEntries::sequential((view_uniform.clone(), light_occluders.clone())),
+                &BindGroupEntries::sequential((
+                    view_uniform.clone(),
+                    light_occluders.clone(),
+                    occluder_header.clone(),
+                )),
             ),
             lighting: render_device.create_bind_group(
                 "lighting2d_bind_group",

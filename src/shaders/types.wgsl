@@ -26,3 +26,7 @@ struct PointLight2d {
     intensity: f32,
     radius: f32,
 }
+
+struct LightOccluderHeader {
+  size: u32,
+}

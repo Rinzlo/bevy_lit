@@ -19,7 +19,10 @@ use bevy::{
 };
 
 use crate::{
-    extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
+    extract::{
+        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
+        LightOccluderHeader,
+    },
     prepare::{
         Lighting2dAuxiliaryTextures, Lighting2dPostProcessPipelineId, Lighting2dSurfaceBindGroups,
     },
@@ -82,6 +85,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 (
                     uniform_buffer::<ViewUniform>(true),
                     GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(render_device),
+                    uniform_buffer::<LightOccluderHeader>(true),
                 ),
             ),
         );
@@ -212,6 +216,7 @@ impl ViewNode for LightingNode {
         Read<Lighting2dAuxiliaryTextures>,
         Read<Lighting2dSurfaceBindGroups>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
+        Read<DynamicUniformIndex<LightOccluderHeader>>,
     );
 
     fn run<'w>(
@@ -225,6 +230,7 @@ impl ViewNode for LightingNode {
             aux_textures,
             bind_groups,
             settings_index,
+            header_index, // Add this
         ): QueryItem<'w, Self::ViewQuery>,
         world: &'w World,
     ) -> Result<(), NodeRunError> {
@@ -263,7 +269,7 @@ impl ViewNode for LightingNode {
             ..default()
         });
 
-        let mut dynamic_offset = vec![view_uniform.offset];
+        let mut dynamic_offset = vec![view_uniform.offset, header_index.index()];
         if !storage_buffer_support {
             dynamic_offset.push(0);
         }

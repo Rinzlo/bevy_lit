@@ -55,18 +55,32 @@ pub fn extract_light_occluders(
             &ViewVisibility,
         )>,
     >,
+    camera_query: Query<Entity, With<Camera>>,
 ) {
+    let mut occluders = Vec::new();
+
     for (render_entity, light_occluder, transform, view_visibility) in &light_occluders_query {
         if !view_visibility.get() {
+            commands
+                .entity(render_entity)
+                .remove::<ExtractedLightOccluder2d>();
             continue;
         }
 
-        commands
-            .entity(render_entity)
-            .insert(ExtractedLightOccluder2d {
-                half_size: light_occluder.half_size,
-                center: transform.translation().xy(),
-            });
+        let extracted = ExtractedLightOccluder2d {
+            half_size: light_occluder.half_size,
+            center: transform.translation().xy(),
+        };
+
+        occluders.push(extracted.clone());
+
+        commands.entity(render_entity).insert(extracted);
+    }
+
+    if let Ok(camera) = camera_query.get_single() {
+        commands.insert_or_spawn_batch([(camera, LightOccluderHeader {
+            size: occluders.len() as u32,
+        })]);
     }
 }
 
@@ -92,6 +106,10 @@ pub fn extract_point_lights(
 ) {
     for (render_entity, point_light, transform, visibility) in point_lights_query.iter() {
         if !visibility.get() {
+            commands
+                .entity(render_entity)
+                .remove::<ExtractedPointLight2d>();
+
             continue;
         }
 
@@ -105,4 +123,9 @@ pub fn extract_point_lights(
                 falloff: point_light.falloff,
             });
     }
+}
+
+#[derive(Component, ShaderType, Default, Clone)]
+pub struct LightOccluderHeader {
+    pub size: u32,
 }
