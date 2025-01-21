@@ -1,6 +1,6 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
-    types::{Lighting2dSettings, PointLight2d, LightOccluder2dBufferSize},
+    types::{Lighting2dSettings, PointLight2d, BufferSize},
     view_transformations::{
         frag_coord_to_ndc,
         position_ndc_to_world,
@@ -21,7 +21,7 @@
 
 @group(0) @binding(3) var sdf: texture_2d<f32>;
 @group(0) @binding(4) var sdf_sampler: sampler;
-@group(0) @binding(5) var<uniform> buffer_size: LightOccluder2dBufferSize;
+@group(0) @binding(5) var<uniform> buffer_size: BufferSize;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {

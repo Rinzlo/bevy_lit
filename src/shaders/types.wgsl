@@ -27,10 +27,6 @@ struct PointLight2d {
     radius: f32,
 }
 
-struct LightOccluder2dBufferSize {
-  size: u32,
-}
-
-struct PointLight2dBufferSize {
+struct BufferSize {
   size: u32,
 }

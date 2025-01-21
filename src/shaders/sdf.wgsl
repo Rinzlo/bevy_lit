@@ -1,6 +1,6 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
-    types::{LightOccluder2d, LightOccluder2dBufferSize},
+    types::{LightOccluder2d, BufferSize},
     view_transformations::{frag_coord_to_ndc, position_ndc_to_world},
 }
 
@@ -12,7 +12,7 @@
     @group(0) @binding(1) var<uniform> occluders: array<LightOccluder2d, MAX_OCCLUDERS>;
 #endif
 
-@group(0) @binding(2) var<uniform> buffer_size: LightOccluder2dBufferSize;
+@group(0) @binding(2) var<uniform> buffer_size: BufferSize;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
