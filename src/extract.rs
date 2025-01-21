@@ -57,28 +57,28 @@ pub fn extract_light_occluders(
     >,
     camera_query: Query<Entity, With<Camera>>,
 ) {
-    let mut occluders = Vec::new();
+    let mut occluders_len = 0;
 
     for (render_entity, light_occluder, transform, view_visibility) in &light_occluders_query {
-        if !view_visibility.get() {
+        if view_visibility.get() {
+            occluders_len += 1;
+
+            commands
+                .entity(render_entity)
+                .insert(ExtractedLightOccluder2d {
+                    half_size: light_occluder.half_size,
+                    center: transform.translation().xy(),
+                });
+        } else {
             commands
                 .entity(render_entity)
                 .remove::<ExtractedLightOccluder2d>();
-            continue;
         }
-
-        let extracted = ExtractedLightOccluder2d {
-            half_size: light_occluder.half_size,
-            center: transform.translation().xy(),
-        };
-
-        occluders.push(extracted.clone());
-        commands.entity(render_entity).insert(extracted);
     }
 
     if let Ok(camera) = camera_query.get_single() {
         commands.insert_or_spawn_batch([(camera, Occluder2dBufferSize {
-            size: occluders.len() as u32,
+            size: occluders_len as u32,
         })]);
     }
 }
@@ -104,32 +104,31 @@ pub fn extract_point_lights(
     >,
     camera_query: Query<Entity, With<Camera>>,
 ) {
-    let mut lights = Vec::new();
+    let mut lights_len = 0;
 
     for (render_entity, point_light, transform, visibility) in point_lights_query.iter() {
-        if !visibility.get() {
+        if visibility.get() {
+            lights_len += 1;
+
+            commands
+                .entity(render_entity)
+                .insert(ExtractedPointLight2d {
+                    color: point_light.color.to_linear(),
+                    center: transform.translation().xy(),
+                    radius: point_light.radius,
+                    intensity: point_light.intensity,
+                    falloff: point_light.falloff,
+                });
+        } else {
             commands
                 .entity(render_entity)
                 .remove::<ExtractedPointLight2d>();
-
-            continue;
         }
-
-        let extracted = ExtractedPointLight2d {
-            color: point_light.color.to_linear(),
-            center: transform.translation().xy(),
-            radius: point_light.radius,
-            intensity: point_light.intensity,
-            falloff: point_light.falloff,
-        };
-
-        lights.push(extracted.clone());
-        commands.entity(render_entity).insert(extracted);
     }
 
     if let Ok(camera) = camera_query.get_single() {
         commands.insert_or_spawn_batch([(camera, PointLight2dBufferSize {
-            size: lights.len() as u32,
+            size: lights_len as u32,
         })]);
     }
 }
