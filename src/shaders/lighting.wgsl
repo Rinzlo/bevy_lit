@@ -17,9 +17,9 @@
     @group(0) @binding(2) var<uniform> lights: array<PointLight2d, 82u>;
 #endif
 
-@group(0) @binding(3) var sdf: texture_2d<f32>;
-@group(0) @binding(4) var sdf_sampler: sampler;
-@group(0) @binding(5) var<uniform> lights_count: ArrayBufferCount;
+@group(0) @binding(3) var<uniform> lights_count: ArrayBufferCount;
+@group(0) @binding(4) var sdf: texture_2d<f32>;
+@group(0) @binding(5) var sdf_sampler: sampler;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {

@@ -97,9 +97,9 @@ impl FromWorld for Lighting2dPrepassPipelines {
                     uniform_buffer::<ViewUniform>(true),
                     uniform_buffer::<ExtractedLighting2dSettings>(true),
                     GpuArrayBuffer::<ExtractedPointLight2d>::binding_layout(render_device),
+                    uniform_buffer::<PointLight2dBufferCount>(true),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
-                    uniform_buffer::<PointLight2dBufferCount>(true),
                 ),
             ),
         );

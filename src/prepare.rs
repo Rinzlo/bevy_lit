@@ -133,9 +133,9 @@ pub fn prepare_lighting_bind_groups(
                     view_uniform.clone(),
                     lighting_settings.clone(),
                     point_lights.clone(),
+                    point_lights_buffer_size.clone(),
                     &aux_textures.sdf.default_view,
                     &sampler,
-                    point_lights_buffer_size.clone(),
                 )),
             ),
             blur: render_device.create_bind_group(
