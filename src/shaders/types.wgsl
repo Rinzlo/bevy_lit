@@ -27,7 +27,7 @@ struct PointLight2d {
     radius: f32,
 }
 
-struct BufferSize {
-    size: u32,
-    _padding: vec3<u32>
+struct ArrayBufferCount {
+    value: u32,
+    _webgl_padding: vec3<u32>,
 }

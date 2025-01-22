@@ -15,7 +15,7 @@ use bevy::{
 use crate::{
     extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
     pipeline::Lighting2dPrepassPipelines,
-    queue::{LightOccluder2dBufferSize, PointLight2dBufferSize},
+    queue::{LightOccluder2dBufferCount, PointLight2dBufferCount},
 };
 
 fn create_aux_texture(
@@ -88,8 +88,8 @@ pub fn prepare_lighting_bind_groups(
     render_device: Res<RenderDevice>,
     view_uniforms: Res<ViewUniforms>,
     light_settings: Res<ComponentUniforms<ExtractedLighting2dSettings>>,
-    occluders_buffer_size: Res<ComponentUniforms<LightOccluder2dBufferSize>>,
-    point_lights_buffer_size: Res<ComponentUniforms<PointLight2dBufferSize>>,
+    occluders_buffer_size: Res<ComponentUniforms<LightOccluder2dBufferCount>>,
+    point_lights_buffer_size: Res<ComponentUniforms<PointLight2dBufferCount>>,
     point_lights: Res<GpuArrayBuffer<ExtractedPointLight2d>>,
     light_occluders: Res<GpuArrayBuffer<ExtractedLightOccluder2d>>,
     views_query: Query<(Entity, &Lighting2dAuxiliaryTextures), With<ExtractedLighting2dSettings>>,

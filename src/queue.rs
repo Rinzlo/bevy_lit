@@ -18,15 +18,15 @@ pub type WithPointLight2d = With<PointLight2d>;
 pub type WithLightOccluder2d = With<LightOccluder2d>;
 
 #[derive(Component, ShaderType, Default, Clone)]
-pub struct LightOccluder2dBufferSize {
-    pub size: u32,
-    _padding: UVec3,
+pub struct LightOccluder2dBufferCount {
+    pub value: u32,
+    _webgl_padding: UVec3,
 }
 
 #[derive(Component, ShaderType, Default, Clone)]
-pub struct PointLight2dBufferSize {
-    pub size: u32,
-    _padding: UVec3,
+pub struct PointLight2dBufferCount {
+    pub value: u32,
+    _webgl_padding: UVec3,
 }
 
 pub fn queue_array_buffer_component_sizes(
@@ -35,13 +35,13 @@ pub fn queue_array_buffer_component_sizes(
 ) {
     for (entity, visible_entities) in &view_query {
         commands.entity(entity).insert((
-            LightOccluder2dBufferSize {
-                size: visible_entities.iter::<With<LightOccluder2d>>().count() as u32,
-                _padding: UVec3::ZERO,
+            LightOccluder2dBufferCount {
+                value: visible_entities.iter::<With<LightOccluder2d>>().count() as u32,
+                _webgl_padding: UVec3::ZERO,
             },
-            PointLight2dBufferSize {
-                size: visible_entities.iter::<With<PointLight2d>>().count() as u32,
-                _padding: UVec3::ZERO,
+            PointLight2dBufferCount {
+                value: visible_entities.iter::<With<PointLight2d>>().count() as u32,
+                _webgl_padding: UVec3::ZERO,
             },
         ));
     }

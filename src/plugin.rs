@@ -25,7 +25,7 @@ use crate::{
     prelude::{AmbientLight2d, LightOccluder2d, Lighting2dSettings, PointLight2d},
     prepare::{prepare_lighting_auxiliary_textures, prepare_lighting_bind_groups},
     queue::{
-        LightOccluder2dBufferSize, PointLight2dBufferSize, WithLightOccluder2d, WithPointLight2d,
+        LightOccluder2dBufferCount, PointLight2dBufferCount, WithLightOccluder2d, WithPointLight2d,
         queue_array_buffer_component_sizes, queue_post_process_pipelines,
     },
 };
@@ -64,9 +64,9 @@ impl Plugin for Lighting2dPlugin {
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
             GpuComponentArrayBufferPlugin::<ExtractedLightOccluder2d>::default(),
-            UniformComponentPlugin::<LightOccluder2dBufferSize>::default(),
+            UniformComponentPlugin::<LightOccluder2dBufferCount>::default(),
             GpuComponentArrayBufferPlugin::<ExtractedPointLight2d>::default(),
-            UniformComponentPlugin::<PointLight2dBufferSize>::default(),
+            UniformComponentPlugin::<PointLight2dBufferCount>::default(),
         ))
         .register_type::<AmbientLight2d>()
         .register_type::<PointLight2d>()

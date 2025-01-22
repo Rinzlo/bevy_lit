@@ -1,6 +1,6 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
-    types::{Lighting2dSettings, PointLight2d, BufferSize},
+    types::{Lighting2dSettings, PointLight2d, ArrayBufferCount},
     view_transformations::{
         frag_coord_to_ndc,
         position_ndc_to_world,
@@ -19,7 +19,7 @@
 
 @group(0) @binding(3) var sdf: texture_2d<f32>;
 @group(0) @binding(4) var sdf_sampler: sampler;
-@group(0) @binding(5) var<uniform> buffer_size: BufferSize;
+@group(0) @binding(5) var<uniform> lights_count: ArrayBufferCount;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
@@ -31,7 +31,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         return lighting_color;
     }
 
-    for (var i = 0u; i < buffer_size.size; i++) {
+    for (var i = 0u; i < lights_count.value; i++) {
         let light = lights[i];
 
         // ignore point lights with radius == 0.0

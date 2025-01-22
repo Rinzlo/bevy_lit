@@ -21,7 +21,7 @@ use bevy::{
 use crate::{
     extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
     prepare::{Lighting2dAuxiliaryTextures, Lighting2dSurfaceBindGroups},
-    queue::{LightOccluder2dBufferSize, Lighting2dPostProcessPipelineId, PointLight2dBufferSize},
+    queue::{LightOccluder2dBufferCount, Lighting2dPostProcessPipelineId, PointLight2dBufferCount},
 };
 
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
@@ -81,7 +81,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 (
                     uniform_buffer::<ViewUniform>(true),
                     GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(render_device),
-                    uniform_buffer::<LightOccluder2dBufferSize>(true),
+                    uniform_buffer::<LightOccluder2dBufferCount>(true),
                 ),
             ),
         );
@@ -99,7 +99,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                     GpuArrayBuffer::<ExtractedPointLight2d>::binding_layout(render_device),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
-                    uniform_buffer::<PointLight2dBufferSize>(true),
+                    uniform_buffer::<PointLight2dBufferCount>(true),
                 ),
             ),
         );
@@ -213,8 +213,8 @@ impl ViewNode for LightingNode {
         Read<Lighting2dAuxiliaryTextures>,
         Read<Lighting2dSurfaceBindGroups>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
-        Read<DynamicUniformIndex<LightOccluder2dBufferSize>>,
-        Read<DynamicUniformIndex<PointLight2dBufferSize>>,
+        Read<DynamicUniformIndex<LightOccluder2dBufferCount>>,
+        Read<DynamicUniformIndex<PointLight2dBufferCount>>,
     );
 
     fn run<'w>(
