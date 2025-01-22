@@ -2,7 +2,7 @@ use crate::prelude::*;
 use bevy::render::sync_world::RenderEntity;
 use bevy::{
     prelude::*,
-    render::{Extract, render_resource::ShaderType, view::ViewVisibility},
+    render::{render_resource::ShaderType, view::ViewVisibility, Extract},
 };
 
 #[derive(Component, Clone, ShaderType)]
