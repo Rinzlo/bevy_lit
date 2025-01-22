@@ -61,6 +61,10 @@ pub fn extract_light_occluders(
 ) {
     for (render_entity, light_occluder, transform, view_visibility) in &light_occluders_query {
         if !view_visibility.get() {
+            commands
+                .entity(render_entity)
+                .remove::<ExtractedLightOccluder2d>();
+
             continue;
         }
 
@@ -95,6 +99,10 @@ pub fn extract_point_lights(
 ) {
     for (render_entity, point_light, transform, visibility) in point_lights_query.iter() {
         if !visibility.get() {
+            commands
+                .entity(render_entity)
+                .remove::<ExtractedPointLight2d>();
+
             continue;
         }
 
