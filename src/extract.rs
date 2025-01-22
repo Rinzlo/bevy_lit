@@ -27,12 +27,15 @@ pub fn extract_lighting_settings(
                 brightness: 1.0,
             });
 
-            (e, ExtractedLighting2dSettings {
-                blur: settings.blur,
-                fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
-                ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
-                raymarch: settings.raymarch.clone(),
-            })
+            (
+                e,
+                ExtractedLighting2dSettings {
+                    blur: settings.blur,
+                    fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
+                    ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
+                    raymarch: settings.raymarch.clone(),
+                },
+            )
         })
         .collect::<Vec<_>>();
 
@@ -55,31 +58,18 @@ pub fn extract_light_occluders(
             &ViewVisibility,
         )>,
     >,
-    camera_query: Query<Entity, With<Camera>>,
 ) {
-    let mut occluders_len = 0;
-
     for (render_entity, light_occluder, transform, view_visibility) in &light_occluders_query {
-        if view_visibility.get() {
-            occluders_len += 1;
-
-            commands
-                .entity(render_entity)
-                .insert(ExtractedLightOccluder2d {
-                    half_size: light_occluder.half_size,
-                    center: transform.translation().xy(),
-                });
-        } else {
-            commands
-                .entity(render_entity)
-                .remove::<ExtractedLightOccluder2d>();
+        if !view_visibility.get() {
+            continue;
         }
-    }
 
-    if let Ok(camera) = camera_query.get_single() {
-        commands.insert_or_spawn_batch([(camera, Occluder2dBufferSize {
-            size: occluders_len as u32,
-        })]);
+        commands
+            .entity(render_entity)
+            .insert(ExtractedLightOccluder2d {
+                half_size: light_occluder.half_size,
+                center: transform.translation().xy(),
+            });
     }
 }
 
@@ -102,43 +92,20 @@ pub fn extract_point_lights(
             &ViewVisibility,
         )>,
     >,
-    camera_query: Query<Entity, With<Camera>>,
 ) {
-    let mut lights_len = 0;
-
     for (render_entity, point_light, transform, visibility) in point_lights_query.iter() {
-        if visibility.get() {
-            lights_len += 1;
-
-            commands
-                .entity(render_entity)
-                .insert(ExtractedPointLight2d {
-                    color: point_light.color.to_linear(),
-                    center: transform.translation().xy(),
-                    radius: point_light.radius,
-                    intensity: point_light.intensity,
-                    falloff: point_light.falloff,
-                });
-        } else {
-            commands
-                .entity(render_entity)
-                .remove::<ExtractedPointLight2d>();
+        if !visibility.get() {
+            continue;
         }
+
+        commands
+            .entity(render_entity)
+            .insert(ExtractedPointLight2d {
+                color: point_light.color.to_linear(),
+                center: transform.translation().xy(),
+                radius: point_light.radius,
+                intensity: point_light.intensity,
+                falloff: point_light.falloff,
+            });
     }
-
-    if let Ok(camera) = camera_query.get_single() {
-        commands.insert_or_spawn_batch([(camera, PointLight2dBufferSize {
-            size: lights_len as u32,
-        })]);
-    }
-}
-
-#[derive(Component, ShaderType, Default, Clone)]
-pub struct Occluder2dBufferSize {
-    pub size: u32,
-}
-
-#[derive(Component, ShaderType, Default, Clone)]
-pub struct PointLight2dBufferSize {
-    pub size: u32,
 }
