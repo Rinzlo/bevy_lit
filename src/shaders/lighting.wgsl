@@ -14,9 +14,7 @@
 #if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 6
     @group(0) @binding(2) var<storage> lights: array<PointLight2d>;
 #else
-    const MAX_LIGHTS: u32 = 82u;
-
-    @group(0) @binding(2) var<uniform> lights: array<PointLight2d, MAX_LIGHTS>;
+    @group(0) @binding(2) var<uniform> lights: array<PointLight2d, 82u>;
 #endif
 
 @group(0) @binding(3) var sdf: texture_2d<f32>;
@@ -32,12 +30,6 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     if get_distance(pos) <= 0.0 {
         return lighting_color;
     }
-
-#if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 6
-    let light_count = arrayLength(&lights);
-#else
-    let light_count = MAX_LIGHTS;
-#endif
 
     for (var i = 0u; i < buffer_size.size; i++) {
         let light = lights[i];

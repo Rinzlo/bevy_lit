@@ -3,22 +3,19 @@ use bevy::{
     render::{
         extract_component::ComponentUniforms,
         render_resource::{
-            BindGroup, BindGroupEntries, CachedRenderPipelineId, GpuArrayBuffer, PipelineCache,
-            SamplerDescriptor, SpecializedRenderPipelines, TextureDescriptor, TextureDimension,
-            TextureFormat, TextureUsages,
+            BindGroup, BindGroupEntries, GpuArrayBuffer, SamplerDescriptor, TextureDescriptor,
+            TextureDimension, TextureFormat, TextureUsages,
         },
         renderer::RenderDevice,
         texture::{CachedTexture, TextureCache},
-        view::{ExtractedView, ViewTarget, ViewUniforms},
+        view::{ViewTarget, ViewUniforms},
     },
 };
 
 use crate::{
-    extract::{
-        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
-        Occluder2dBufferSize, PointLight2dBufferSize,
-    },
-    pipeline::{Lighting2dPipelineKey, Lighting2dPrepassPipelines, PostProcessPipeline},
+    extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
+    pipeline::Lighting2dPrepassPipelines,
+    queue::{LightOccluder2dBufferSize, PointLight2dBufferSize},
 };
 
 fn create_aux_texture(
@@ -27,16 +24,19 @@ fn create_aux_texture(
     render_device: &RenderDevice,
     label: &'static str,
 ) -> CachedTexture {
-    texture_cache.get(render_device, TextureDescriptor {
-        label: Some(label),
-        size: view_target.main_texture().size(),
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: TextureDimension::D2,
-        format: TextureFormat::Rgba16Float,
-        usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    })
+    texture_cache.get(
+        render_device,
+        TextureDescriptor {
+            label: Some(label),
+            size: view_target.main_texture().size(),
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba16Float,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        },
+    )
 }
 
 #[derive(Component)]
@@ -76,29 +76,6 @@ pub fn prepare_lighting_auxiliary_textures(
 }
 
 #[derive(Component)]
-pub struct Lighting2dPostProcessPipelineId(pub CachedRenderPipelineId);
-
-pub fn prepare_post_process_pipelines(
-    mut commands: Commands,
-    pipeline_cache: Res<PipelineCache>,
-    mut post_process_pipelines: ResMut<SpecializedRenderPipelines<PostProcessPipeline>>,
-    post_process_pipeline: Res<PostProcessPipeline>,
-    views_query: Query<(Entity, &ExtractedView), With<ExtractedLighting2dSettings>>,
-) {
-    for (entity, view) in &views_query {
-        commands
-            .entity(entity)
-            .insert(Lighting2dPostProcessPipelineId(
-                post_process_pipelines.specialize(
-                    &pipeline_cache,
-                    &post_process_pipeline,
-                    Lighting2dPipelineKey { hdr: view.hdr },
-                ),
-            ));
-    }
-}
-
-#[derive(Component)]
 pub struct Lighting2dSurfaceBindGroups {
     pub sdf: BindGroup,
     pub lighting: BindGroup,
@@ -111,7 +88,7 @@ pub fn prepare_lighting_bind_groups(
     render_device: Res<RenderDevice>,
     view_uniforms: Res<ViewUniforms>,
     light_settings: Res<ComponentUniforms<ExtractedLighting2dSettings>>,
-    occluders_buffer_size: Res<ComponentUniforms<Occluder2dBufferSize>>,
+    occluders_buffer_size: Res<ComponentUniforms<LightOccluder2dBufferSize>>,
     point_lights_buffer_size: Res<ComponentUniforms<PointLight2dBufferSize>>,
     point_lights: Res<GpuArrayBuffer<ExtractedPointLight2d>>,
     light_occluders: Res<GpuArrayBuffer<ExtractedLightOccluder2d>>,

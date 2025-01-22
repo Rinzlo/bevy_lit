@@ -15,8 +15,7 @@ use bevy::{
 use crate::{
     extract::{
         ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
-        Occluder2dBufferSize, PointLight2dBufferSize, extract_light_occluders,
-        extract_lighting_settings, extract_point_lights,
+        extract_light_occluders, extract_lighting_settings, extract_point_lights,
     },
     pipeline::{
         BLUR_SHADER, LIGHTING_SHADER, Lighting2dPrepassPipelines, LightingLabel, LightingNode,
@@ -24,9 +23,10 @@ use crate::{
         VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, LightOccluder2d, Lighting2dSettings, PointLight2d},
-    prepare::{
-        prepare_lighting_auxiliary_textures, prepare_lighting_bind_groups,
-        prepare_post_process_pipelines,
+    prepare::{prepare_lighting_auxiliary_textures, prepare_lighting_bind_groups},
+    queue::{
+        LightOccluder2dBufferSize, PointLight2dBufferSize, WithLightOccluder2d, WithPointLight2d,
+        queue_array_buffer_component_sizes, queue_post_process_pipelines,
     },
 };
 
@@ -63,10 +63,10 @@ impl Plugin for Lighting2dPlugin {
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
-            UniformComponentPlugin::<Occluder2dBufferSize>::default(),
-            UniformComponentPlugin::<PointLight2dBufferSize>::default(),
-            GpuComponentArrayBufferPlugin::<ExtractedPointLight2d>::default(),
             GpuComponentArrayBufferPlugin::<ExtractedLightOccluder2d>::default(),
+            UniformComponentPlugin::<LightOccluder2dBufferSize>::default(),
+            GpuComponentArrayBufferPlugin::<ExtractedPointLight2d>::default(),
+            UniformComponentPlugin::<PointLight2dBufferSize>::default(),
         ))
         .register_type::<AmbientLight2d>()
         .register_type::<PointLight2d>()
@@ -74,7 +74,10 @@ impl Plugin for Lighting2dPlugin {
         .register_type::<Lighting2dSettings>()
         .add_systems(
             PostUpdate,
-            check_visibility::<Or<(With<PointLight2d>, With<LightOccluder2d>)>>
+            (
+                check_visibility::<WithPointLight2d>,
+                check_visibility::<WithLightOccluder2d>,
+            )
                 .in_set(VisibilitySystems::CheckVisibility),
         );
 
@@ -98,7 +101,11 @@ impl Plugin for Lighting2dPlugin {
                     prepare_lighting_auxiliary_textures
                         .after(prepare_view_targets)
                         .in_set(RenderSet::ManageViews),
-                    prepare_post_process_pipelines.in_set(RenderSet::Prepare),
+                    (
+                        queue_array_buffer_component_sizes,
+                        queue_post_process_pipelines,
+                    )
+                        .in_set(RenderSet::Queue),
                     prepare_lighting_bind_groups.in_set(RenderSet::PrepareBindGroups),
                 ),
             )

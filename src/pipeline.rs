@@ -19,13 +19,9 @@ use bevy::{
 };
 
 use crate::{
-    extract::{
-        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
-        Occluder2dBufferSize, PointLight2dBufferSize,
-    },
-    prepare::{
-        Lighting2dAuxiliaryTextures, Lighting2dPostProcessPipelineId, Lighting2dSurfaceBindGroups,
-    },
+    extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
+    prepare::{Lighting2dAuxiliaryTextures, Lighting2dSurfaceBindGroups},
+    queue::{LightOccluder2dBufferSize, Lighting2dPostProcessPipelineId, PointLight2dBufferSize},
 };
 
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
@@ -85,7 +81,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 (
                     uniform_buffer::<ViewUniform>(true),
                     GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(render_device),
-                    uniform_buffer::<Occluder2dBufferSize>(true),
+                    uniform_buffer::<LightOccluder2dBufferSize>(true),
                 ),
             ),
         );
@@ -217,7 +213,7 @@ impl ViewNode for LightingNode {
         Read<Lighting2dAuxiliaryTextures>,
         Read<Lighting2dSurfaceBindGroups>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
-        Read<DynamicUniformIndex<Occluder2dBufferSize>>,
+        Read<DynamicUniformIndex<LightOccluder2dBufferSize>>,
         Read<DynamicUniformIndex<PointLight2dBufferSize>>,
     );
 
@@ -324,10 +320,11 @@ impl ViewNode for LightingNode {
                 ..default()
             });
 
-            blur_pass.set_bind_group(0, &bind_groups.blur, &[
-                view_uniform.offset,
-                settings_index.index(),
-            ]);
+            blur_pass.set_bind_group(
+                0,
+                &bind_groups.blur,
+                &[view_uniform.offset, settings_index.index()],
+            );
             blur_pass.set_render_pipeline(blur_pipeline);
             blur_pass.draw(0..3, 0..1);
         }

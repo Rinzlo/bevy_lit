@@ -7,9 +7,7 @@
 #if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 6
     @group(0) @binding(1) var<storage> occluders: array<LightOccluder2d>;
 #else
-    const MAX_OCCLUDERS: u32 = 82u;
-
-    @group(0) @binding(1) var<uniform> occluders: array<LightOccluder2d, MAX_OCCLUDERS>;
+    @group(0) @binding(1) var<uniform> occluders: array<LightOccluder2d, 82u>;
 #endif
 
 @group(0) @binding(2) var<uniform> buffer_size: BufferSize;
@@ -17,12 +15,6 @@
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let pos = position_ndc_to_world(frag_coord_to_ndc(in.position)).xy;
-
-#if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 6
-    let occluder_count = arrayLength(&occluders);
-#else
-    let occluder_count = MAX_OCCLUDERS;
-#endif
 
     var sdf = occluder_sd(pos, occluders[0]);
     for (var i = 1u; i < buffer_size.size; i++) {

@@ -28,5 +28,6 @@ struct PointLight2d {
 }
 
 struct BufferSize {
-  size: u32,
+    size: u32,
+    _padding: vec3<u32>
 }
