@@ -20,8 +20,10 @@ use bevy::{
 
 use crate::{
     extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
-    prepare::{Lighting2dAuxiliaryTextures, Lighting2dSurfaceBindGroups},
-    queue::{LightOccluder2dBufferCount, Lighting2dPostProcessPipelineId, PointLight2dBufferCount},
+    prepare::{
+        Lighting2dArrayBufferCount, Lighting2dAuxiliaryTextures, Lighting2dSurfaceBindGroups,
+    },
+    queue::Lighting2dPostProcessPipelineId,
 };
 
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
@@ -81,7 +83,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 (
                     uniform_buffer::<ViewUniform>(true),
                     GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(render_device),
-                    uniform_buffer::<LightOccluder2dBufferCount>(true),
+                    uniform_buffer::<Lighting2dArrayBufferCount>(false),
                 ),
             ),
         );
@@ -97,7 +99,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                     uniform_buffer::<ViewUniform>(true),
                     uniform_buffer::<ExtractedLighting2dSettings>(true),
                     GpuArrayBuffer::<ExtractedPointLight2d>::binding_layout(render_device),
-                    uniform_buffer::<PointLight2dBufferCount>(true),
+                    uniform_buffer::<Lighting2dArrayBufferCount>(false),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
                 ),
@@ -213,8 +215,6 @@ impl ViewNode for LightingNode {
         Read<Lighting2dAuxiliaryTextures>,
         Read<Lighting2dSurfaceBindGroups>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
-        Read<DynamicUniformIndex<LightOccluder2dBufferCount>>,
-        Read<DynamicUniformIndex<PointLight2dBufferCount>>,
     );
 
     fn run<'w>(
@@ -228,8 +228,6 @@ impl ViewNode for LightingNode {
             aux_textures,
             bind_groups,
             settings_index,
-            occlulders_buffer_size_index,
-            point_light_buffer_size_index,
         ): QueryItem<'w, Self::ViewQuery>,
         world: &'w World,
     ) -> Result<(), NodeRunError> {
@@ -268,7 +266,7 @@ impl ViewNode for LightingNode {
             ..default()
         });
 
-        let mut dynamic_offset = vec![view_uniform.offset, occlulders_buffer_size_index.index()];
+        let mut dynamic_offset = vec![view_uniform.offset];
         if !storage_buffer_support {
             dynamic_offset.push(0);
         }
@@ -290,11 +288,7 @@ impl ViewNode for LightingNode {
             ..default()
         });
 
-        let mut dynamic_offset = vec![
-            view_uniform.offset,
-            settings_index.index(),
-            point_light_buffer_size_index.index(),
-        ];
+        let mut dynamic_offset = vec![view_uniform.offset, settings_index.index()];
         if !storage_buffer_support {
             dynamic_offset.push(0);
         }

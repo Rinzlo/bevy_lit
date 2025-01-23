@@ -4,7 +4,6 @@ use bevy::{
     prelude::*,
     render::{
         extract_component::UniformComponentPlugin,
-        gpu_component_array_buffer::GpuComponentArrayBufferPlugin,
         render_graph::{RenderGraphApp, ViewNodeRunner},
         render_resource::SpecializedRenderPipelines,
         view::{check_visibility, prepare_view_targets, VisibilitySystems},
@@ -23,11 +22,11 @@ use crate::{
         VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, LightOccluder2d, Lighting2dSettings, PointLight2d},
-    prepare::{prepare_lighting_auxiliary_textures, prepare_lighting_bind_groups},
-    queue::{
-        queue_array_buffer_component_sizes, queue_post_process_pipelines,
-        LightOccluder2dBufferCount, PointLight2dBufferCount, WithLightOccluder2d, WithPointLight2d,
+    prepare::{
+        prepare_lighting2d_view_array_buffers, prepare_lighting_auxiliary_textures,
+        prepare_lighting_bind_groups, Lighing2dViewArrayBuffer,
     },
+    queue::queue_post_process_pipelines,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.
@@ -61,25 +60,19 @@ impl Plugin for Lighting2dPlugin {
             Shader::from_wgsl
         );
 
-        app.add_plugins((
-            UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
-            GpuComponentArrayBufferPlugin::<ExtractedLightOccluder2d>::default(),
-            UniformComponentPlugin::<LightOccluder2dBufferCount>::default(),
-            GpuComponentArrayBufferPlugin::<ExtractedPointLight2d>::default(),
-            UniformComponentPlugin::<PointLight2dBufferCount>::default(),
-        ))
-        .register_type::<AmbientLight2d>()
-        .register_type::<PointLight2d>()
-        .register_type::<LightOccluder2d>()
-        .register_type::<Lighting2dSettings>()
-        .add_systems(
-            PostUpdate,
-            (
-                check_visibility::<WithPointLight2d>,
-                check_visibility::<WithLightOccluder2d>,
-            )
-                .in_set(VisibilitySystems::CheckVisibility),
-        );
+        app.add_plugins(UniformComponentPlugin::<ExtractedLighting2dSettings>::default())
+            .register_type::<AmbientLight2d>()
+            .register_type::<PointLight2d>()
+            .register_type::<LightOccluder2d>()
+            .register_type::<Lighting2dSettings>()
+            .add_systems(
+                PostUpdate,
+                (
+                    check_visibility::<With<PointLight2d>>,
+                    check_visibility::<With<LightOccluder2d>>,
+                )
+                    .in_set(VisibilitySystems::CheckVisibility),
+            );
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -101,11 +94,15 @@ impl Plugin for Lighting2dPlugin {
                     prepare_lighting_auxiliary_textures
                         .after(prepare_view_targets)
                         .in_set(RenderSet::ManageViews),
+                    queue_post_process_pipelines.in_set(RenderSet::Queue),
                     (
-                        queue_array_buffer_component_sizes,
-                        queue_post_process_pipelines,
-                    )
-                        .in_set(RenderSet::Queue),
+                    prepare_lighting2d_view_array_buffers::<
+                        ExtractedLightOccluder2d,
+                        LightOccluder2d,
+                    >,
+                    prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>,
+                )
+                    .in_set(RenderSet::PrepareResources),
                     prepare_lighting_bind_groups.in_set(RenderSet::PrepareBindGroups),
                 ),
             )
@@ -119,6 +116,8 @@ impl Plugin for Lighting2dPlugin {
         };
 
         render_app
+            .insert_resource(Lighing2dViewArrayBuffer::<ExtractedLightOccluder2d>::default())
+            .insert_resource(Lighing2dViewArrayBuffer::<ExtractedPointLight2d>::default())
             .init_resource::<Lighting2dPrepassPipelines>()
             .init_resource::<PostProcessPipeline>();
     }

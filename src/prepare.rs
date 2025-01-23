@@ -1,21 +1,22 @@
 use bevy::{
+    ecs::entity::{EntityHashMap, EntityHashSet},
     prelude::*,
     render::{
         extract_component::ComponentUniforms,
         render_resource::{
-            BindGroup, BindGroupEntries, GpuArrayBuffer, SamplerDescriptor, TextureDescriptor,
-            TextureDimension, TextureFormat, TextureUsages,
+            BindGroup, BindGroupEntries, GpuArrayBuffer, GpuArrayBufferable, SamplerDescriptor,
+            ShaderType, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+            UniformBuffer,
         },
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
         texture::{CachedTexture, TextureCache},
-        view::{ViewTarget, ViewUniforms},
+        view::{RenderVisibleEntities, ViewTarget, ViewUniforms},
     },
 };
 
 use crate::{
     extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
     pipeline::Lighting2dPrepassPipelines,
-    queue::{LightOccluder2dBufferCount, PointLight2dBufferCount},
 };
 
 fn create_aux_texture(
@@ -75,6 +76,89 @@ pub fn prepare_lighting_auxiliary_textures(
     }
 }
 
+#[derive(ShaderType)]
+pub struct Lighting2dArrayBufferCount {
+    pub value: u32,
+    _webgl_padding: UVec3,
+}
+
+impl Lighting2dArrayBufferCount {
+    pub fn new(value: u32) -> Self {
+        Self {
+            value,
+            _webgl_padding: UVec3::ZERO,
+        }
+    }
+}
+
+#[derive(Deref, DerefMut)]
+pub struct Lighting2dArrayBuffer<T: GpuArrayBufferable> {
+    #[deref]
+    pub data: GpuArrayBuffer<T>,
+    pub count: UniformBuffer<Lighting2dArrayBufferCount>,
+}
+
+impl<T: GpuArrayBufferable> Lighting2dArrayBuffer<T> {
+    pub fn new(device: &RenderDevice, count: u32) -> Self {
+        Self {
+            data: GpuArrayBuffer::<T>::new(device),
+            count: UniformBuffer::from(Lighting2dArrayBufferCount::new(count)),
+        }
+    }
+
+    pub fn write(&mut self, device: &RenderDevice, queue: &RenderQueue) {
+        self.data.write_buffer(device, queue);
+        self.count.write_buffer(device, queue);
+    }
+}
+
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct Lighing2dViewArrayBuffer<T: GpuArrayBufferable>(
+    pub EntityHashMap<Lighting2dArrayBuffer<T>>,
+);
+
+pub fn prepare_lighting2d_view_array_buffers<T: Component + GpuArrayBufferable, U: Component>(
+    mut view_entities: Local<EntityHashSet>,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
+    mut view_array_buffer: ResMut<Lighing2dViewArrayBuffer<T>>,
+    view_query: Query<(Entity, &RenderVisibleEntities), With<ExtractedLighting2dSettings>>,
+    components: Query<(Entity, &T)>,
+) {
+    for (view_entity, visible_entities) in &view_query {
+        view_entities.clear();
+
+        visible_entities.iter::<With<U>>().for_each(|(e, _)| {
+            view_entities.insert(*e);
+        });
+
+        let count = view_entities.len() as u32;
+
+        if !view_array_buffer.contains_key(&view_entity) {
+            view_array_buffer.insert(
+                view_entity,
+                Lighting2dArrayBuffer::<T>::new(&render_device, count),
+            );
+        }
+
+        let Some(gpu_array_buffer) = view_array_buffer.get_mut(&view_entity) else {
+            continue;
+        };
+
+        gpu_array_buffer.data.clear();
+
+        for (entity, component) in &components {
+            if !view_entities.contains(&entity) {
+                continue;
+            }
+
+            gpu_array_buffer.push(component.clone());
+        }
+
+        gpu_array_buffer.write(&render_device, &render_queue);
+    }
+}
+
 #[derive(Component)]
 pub struct Lighting2dSurfaceBindGroups {
     pub sdf: BindGroup,
@@ -88,34 +172,42 @@ pub fn prepare_lighting_bind_groups(
     render_device: Res<RenderDevice>,
     view_uniforms: Res<ViewUniforms>,
     lighting_settings: Res<ComponentUniforms<ExtractedLighting2dSettings>>,
-    light_occluders: Res<GpuArrayBuffer<ExtractedLightOccluder2d>>,
-    occluders_buffer_count: Res<ComponentUniforms<LightOccluder2dBufferCount>>,
-    point_lights: Res<GpuArrayBuffer<ExtractedPointLight2d>>,
-    point_lights_buffer_count: Res<ComponentUniforms<PointLight2dBufferCount>>,
-    views_query: Query<(Entity, &Lighting2dAuxiliaryTextures), With<ExtractedLighting2dSettings>>,
+    point_light_array_buffer: Res<Lighing2dViewArrayBuffer<ExtractedPointLight2d>>,
+    light_occluders_array_buffer: Res<Lighing2dViewArrayBuffer<ExtractedLightOccluder2d>>,
+    view_query: Query<(Entity, &Lighting2dAuxiliaryTextures), With<ExtractedLighting2dSettings>>,
 ) {
-    let (
-        Some(view_uniforms),
-        Some(lighting_settings),
-        Some(light_occluders),
-        Some(occluders_buffer_count),
-        Some(point_lights),
-        Some(point_lights_buffer_count),
-    ) = (
+    let (Some(view_uniforms), Some(lighting_settings)) = (
         view_uniforms.uniforms.binding(),
         lighting_settings.binding(),
-        light_occluders.binding(),
-        occluders_buffer_count.binding(),
-        point_lights.binding(),
-        point_lights_buffer_count.binding(),
-    )
-    else {
+    ) else {
         return;
     };
 
     let sampler = render_device.create_sampler(&SamplerDescriptor::default());
 
-    for (entity, aux_textures) in &views_query {
+    for (entity, aux_textures) in &view_query {
+        let (Some(point_lights), Some(light_occluders)) = (
+            point_light_array_buffer.get(&entity),
+            light_occluders_array_buffer.get(&entity),
+        ) else {
+            continue;
+        };
+
+        let (
+            Some(point_lights),
+            Some(point_lights_count),
+            Some(light_occluders),
+            Some(light_occluders_count),
+        ) = (
+            point_lights.data.binding(),
+            point_lights.count.binding(),
+            light_occluders.data.binding(),
+            light_occluders.count.binding(),
+        )
+        else {
+            continue;
+        };
+
         commands.entity(entity).insert(Lighting2dSurfaceBindGroups {
             sdf: render_device.create_bind_group(
                 "sdf_bind_group",
@@ -123,7 +215,7 @@ pub fn prepare_lighting_bind_groups(
                 &BindGroupEntries::sequential((
                     view_uniforms.clone(),
                     light_occluders.clone(),
-                    occluders_buffer_count.clone(),
+                    light_occluders_count.clone(),
                 )),
             ),
             lighting: render_device.create_bind_group(
@@ -133,7 +225,7 @@ pub fn prepare_lighting_bind_groups(
                     view_uniforms.clone(),
                     lighting_settings.clone(),
                     point_lights.clone(),
-                    point_lights_buffer_count.clone(),
+                    point_lights_count.clone(),
                     &aux_textures.sdf.default_view,
                     &sampler,
                 )),

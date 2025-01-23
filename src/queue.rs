@@ -1,51 +1,15 @@
 use bevy::{
     prelude::*,
     render::{
-        render_resource::{
-            CachedRenderPipelineId, PipelineCache, ShaderType, SpecializedRenderPipelines,
-        },
-        view::{ExtractedView, RenderVisibleEntities},
+        render_resource::{CachedRenderPipelineId, PipelineCache, SpecializedRenderPipelines},
+        view::ExtractedView,
     },
 };
 
 use crate::{
     extract::ExtractedLighting2dSettings,
     pipeline::{Lighting2dPipelineKey, PostProcessPipeline},
-    types::{LightOccluder2d, PointLight2d},
 };
-
-pub type WithPointLight2d = With<PointLight2d>;
-pub type WithLightOccluder2d = With<LightOccluder2d>;
-
-#[derive(Component, ShaderType, Default, Clone)]
-pub struct LightOccluder2dBufferCount {
-    pub value: u32,
-    _webgl_padding: UVec3,
-}
-
-#[derive(Component, ShaderType, Default, Clone)]
-pub struct PointLight2dBufferCount {
-    pub value: u32,
-    _webgl_padding: UVec3,
-}
-
-pub fn queue_array_buffer_component_sizes(
-    mut commands: Commands,
-    view_query: Query<(Entity, &RenderVisibleEntities), With<ExtractedLighting2dSettings>>,
-) {
-    for (entity, visible_entities) in &view_query {
-        commands.entity(entity).insert((
-            LightOccluder2dBufferCount {
-                value: visible_entities.iter::<With<LightOccluder2d>>().count() as u32,
-                _webgl_padding: UVec3::ZERO,
-            },
-            PointLight2dBufferCount {
-                value: visible_entities.iter::<With<PointLight2d>>().count() as u32,
-                _webgl_padding: UVec3::ZERO,
-            },
-        ));
-    }
-}
 
 #[derive(Component)]
 pub struct Lighting2dPostProcessPipelineId(pub CachedRenderPipelineId);
