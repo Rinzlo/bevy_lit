@@ -1,6 +1,6 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
-    types::{Lighting2dSettings, PointLight2d, ArrayBufferCount},
+    types::{Lighting2dSettings, PointLight2d},
     view_transformations::{
         frag_coord_to_ndc,
         position_ndc_to_world,
@@ -10,14 +10,8 @@
 }
 
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
-
-#if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 6
-    @group(0) @binding(2) var<storage> lights: array<PointLight2d>;
-#else
-    @group(0) @binding(2) var<uniform> lights: array<PointLight2d, 82u>;
-#endif
-
-@group(0) @binding(3) var<uniform> lights_count: ArrayBufferCount;
+@group(0) @binding(2) var<storage> lights: array<PointLight2d>;
+@group(0) @binding(3) var<uniform> lights_count: u32;
 @group(0) @binding(4) var sdf: texture_2d<f32>;
 @group(0) @binding(5) var sdf_sampler: sampler;
 
@@ -31,13 +25,8 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         return lighting_color;
     }
 
-    for (var i = 0u; i < lights_count.value; i++) {
+    for (var i = 0u; i < lights_count; i++) {
         let light = lights[i];
-
-        // ignore point lights with radius == 0.0
-        if light.radius == 0.0 {
-            continue;
-        }
 
         let dist = distance(light.center, pos);
 

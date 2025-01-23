@@ -26,9 +26,3 @@ struct PointLight2d {
     intensity: f32,
     radius: f32,
 }
-
-struct ArrayBufferCount {
-    value: u32,
-    // enforce 16bit alignement for webgl2 padding
-    _pad: vec3<u32>,
-}

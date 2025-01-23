@@ -1,29 +1,19 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
-    types::{LightOccluder2d, ArrayBufferCount},
+    types::{LightOccluder2d},
     view_transformations::{frag_coord_to_ndc, position_ndc_to_world},
 }
 
-#if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 6
-    @group(0) @binding(1) var<storage> occluders: array<LightOccluder2d>;
-#else
-    @group(0) @binding(1) var<uniform> occluders: array<LightOccluder2d, 82u>;
-#endif
-
-@group(0) @binding(2) var<uniform> occluders_count: ArrayBufferCount;
+@group(0) @binding(1) var<storage> occluders: array<LightOccluder2d>;
+@group(0) @binding(2) var<uniform> occluders_count: u32;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let pos = position_ndc_to_world(frag_coord_to_ndc(in.position)).xy;
 
     var sdf = occluder_sd(pos, occluders[0]);
-    for (var i = 1u; i < occluders_count.value; i++) {
+    for (var i = 1u; i < occluders_count; i++) {
         let occluder = occluders[i];
-
-        // ignore occluders with half_size == (0.0, 0.0)
-        if occluder.half_size.x == 0.0 && occluder.half_size.y == 0.0 {
-            continue;
-        }
 
         sdf = min(sdf, occluder_sd(pos, occluder));
     }

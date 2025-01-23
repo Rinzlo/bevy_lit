@@ -4,9 +4,8 @@ use bevy::{
     render::{
         extract_component::ComponentUniforms,
         render_resource::{
-            BindGroup, BindGroupEntries, GpuArrayBuffer, GpuArrayBufferable, SamplerDescriptor,
-            ShaderType, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
-            UniformBuffer,
+            BindGroup, BindGroupEntries, GpuArrayBufferable, SamplerDescriptor, StorageBuffer,
+            TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, UniformBuffer,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::{CachedTexture, TextureCache},
@@ -76,33 +75,18 @@ pub fn prepare_lighting_auxiliary_textures(
     }
 }
 
-#[derive(ShaderType)]
-pub struct Lighting2dArrayBufferCount {
-    pub value: u32,
-    _webgl_padding: UVec3,
-}
-
-impl Lighting2dArrayBufferCount {
-    pub fn new(value: u32) -> Self {
-        Self {
-            value,
-            _webgl_padding: UVec3::ZERO,
-        }
-    }
-}
-
 #[derive(Deref, DerefMut)]
 pub struct Lighting2dArrayBuffer<T: GpuArrayBufferable> {
     #[deref]
-    pub data: GpuArrayBuffer<T>,
-    pub count: UniformBuffer<Lighting2dArrayBufferCount>,
+    pub data: StorageBuffer<Vec<T>>,
+    pub count: UniformBuffer<u32>,
 }
 
 impl<T: GpuArrayBufferable> Lighting2dArrayBuffer<T> {
-    pub fn new(device: &RenderDevice, count: u32) -> Self {
+    pub fn new(data: Vec<T>, count: u32) -> Self {
         Self {
-            data: GpuArrayBuffer::<T>::new(device),
-            count: UniformBuffer::from(Lighting2dArrayBufferCount::new(count)),
+            data: StorageBuffer::from(data),
+            count: UniformBuffer::from(count),
         }
     }
 
@@ -128,34 +112,26 @@ pub fn prepare_lighting2d_view_array_buffers<T: Component + GpuArrayBufferable, 
     for (view_entity, visible_entities) in &view_query {
         view_entities.clear();
 
-        visible_entities.iter::<With<U>>().for_each(|(e, _)| {
+        for (e, _) in visible_entities.iter::<With<U>>() {
             view_entities.insert(*e);
-        });
-
-        let count = view_entities.len() as u32;
-
-        if !view_array_buffer.contains_key(&view_entity) {
-            view_array_buffer.insert(
-                view_entity,
-                Lighting2dArrayBuffer::<T>::new(&render_device, count),
-            );
         }
 
-        let Some(gpu_array_buffer) = view_array_buffer.get_mut(&view_entity) else {
-            continue;
-        };
+        view_array_buffer.insert(
+            view_entity,
+            Lighting2dArrayBuffer::<T>::new(
+                components
+                    .iter()
+                    .filter(|(entity, _)| view_entities.contains(entity))
+                    .map(|(_, component)| component.clone())
+                    .collect(),
+                view_entities.len() as u32,
+            ),
+        );
 
-        gpu_array_buffer.data.clear();
-
-        for (entity, component) in &components {
-            if !view_entities.contains(&entity) {
-                continue;
-            }
-
-            gpu_array_buffer.push(component.clone());
-        }
-
-        gpu_array_buffer.write(&render_device, &render_queue);
+        view_array_buffer
+            .get_mut(&view_entity)
+            .unwrap()
+            .write(&render_device, &render_queue);
     }
 }
 

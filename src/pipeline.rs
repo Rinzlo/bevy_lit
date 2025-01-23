@@ -6,12 +6,12 @@ use bevy::{
         extract_component::DynamicUniformIndex,
         render_graph::{NodeRunError, RenderGraphContext, RenderLabel, ViewNode},
         render_resource::{
-            binding_types::{sampler, texture_2d, uniform_buffer},
+            binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
             BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, FragmentState, GpuArrayBuffer, LoadOp, Operations,
-            PipelineCache, RenderPassColorAttachment, RenderPassDescriptor,
-            RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
-            SpecializedRenderPipeline, StoreOp, TextureFormat, TextureSampleType,
+            ColorTargetState, ColorWrites, FragmentState, LoadOp, Operations, PipelineCache,
+            RenderPassColorAttachment, RenderPassDescriptor, RenderPipelineDescriptor,
+            SamplerBindingType, SamplerDescriptor, ShaderStages, SpecializedRenderPipeline,
+            StoreOp, TextureFormat, TextureSampleType,
         },
         renderer::{RenderContext, RenderDevice},
         view::{ViewTarget, ViewUniform, ViewUniformOffset},
@@ -20,9 +20,7 @@ use bevy::{
 
 use crate::{
     extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
-    prepare::{
-        Lighting2dArrayBufferCount, Lighting2dAuxiliaryTextures, Lighting2dSurfaceBindGroups,
-    },
+    prepare::{Lighting2dAuxiliaryTextures, Lighting2dSurfaceBindGroups},
     queue::Lighting2dPostProcessPipelineId,
 };
 
@@ -82,8 +80,8 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 ShaderStages::FRAGMENT,
                 (
                     uniform_buffer::<ViewUniform>(true),
-                    GpuArrayBuffer::<ExtractedLightOccluder2d>::binding_layout(render_device),
-                    uniform_buffer::<Lighting2dArrayBufferCount>(false),
+                    storage_buffer_read_only::<ExtractedLightOccluder2d>(false),
+                    uniform_buffer::<u32>(false),
                 ),
             ),
         );
@@ -98,8 +96,8 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 (
                     uniform_buffer::<ViewUniform>(true),
                     uniform_buffer::<ExtractedLighting2dSettings>(true),
-                    GpuArrayBuffer::<ExtractedPointLight2d>::binding_layout(render_device),
-                    uniform_buffer::<Lighting2dArrayBufferCount>(false),
+                    storage_buffer_read_only::<ExtractedPointLight2d>(false),
+                    uniform_buffer::<u32>(false),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
                 ),
@@ -249,12 +247,6 @@ impl ViewNode for LightingNode {
             return Ok(());
         };
 
-        let storage_buffer_support = ctx
-            .render_device()
-            .limits()
-            .max_storage_buffers_per_shader_stage
-            > 0;
-
         // SDF
         let mut sdf_pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
             label: Some("sdf_pass"),
@@ -266,13 +258,8 @@ impl ViewNode for LightingNode {
             ..default()
         });
 
-        let mut dynamic_offset = vec![view_uniform.offset];
-        if !storage_buffer_support {
-            dynamic_offset.push(0);
-        }
-
         sdf_pass.set_render_pipeline(sdf_pipeline);
-        sdf_pass.set_bind_group(0, &bind_groups.sdf, &dynamic_offset[..]);
+        sdf_pass.set_bind_group(0, &bind_groups.sdf, &[view_uniform.offset]);
         sdf_pass.draw(0..3, 0..1);
 
         drop(sdf_pass);
@@ -288,13 +275,12 @@ impl ViewNode for LightingNode {
             ..default()
         });
 
-        let mut dynamic_offset = vec![view_uniform.offset, settings_index.index()];
-        if !storage_buffer_support {
-            dynamic_offset.push(0);
-        }
-
         lighting_pass.set_render_pipeline(lighting_pipeline);
-        lighting_pass.set_bind_group(0, &bind_groups.lighting, &dynamic_offset[..]);
+        lighting_pass.set_bind_group(
+            0,
+            &bind_groups.lighting,
+            &[view_uniform.offset, settings_index.index()],
+        );
         lighting_pass.draw(0..3, 0..1);
 
         drop(lighting_pass);
