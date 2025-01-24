@@ -51,7 +51,7 @@ impl Default for RaymarchSettings {
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
 #[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld)]
+#[require(SyncToRenderWorld, AmbientLight2d)]
 pub struct Lighting2dSettings {
     /// The blur coc (circle of confusion) dimension contributing to the softness of the shadows
     pub blur: f32,
@@ -83,6 +83,8 @@ pub struct PointLight2d {
     pub radius: f32,
     /// The falloff rate of the point light.
     pub falloff: f32,
+    /// wether the point light should project shadows
+    pub shadows_enabled: bool,
 }
 
 impl Default for PointLight2d {
@@ -92,6 +94,7 @@ impl Default for PointLight2d {
             intensity: 1.0,
             radius: 64.0,
             falloff: 1.0,
+            shadows_enabled: true,
         }
     }
 }

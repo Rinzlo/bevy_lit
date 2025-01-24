@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.5.0
+
+### Features
+
+- Introduced **frustum culling** for lighting artifacts 🚀
+- Added `shadows_enabled` to `PointLight2d` for shadow projection control
+- Added new `stress_test` example
+
+### Breaking Changes
+
+- Removed support for WebGL2
+
+### Migration
+
+```diff
+  commands.spawn((
+      CursorLight,
+      PointLight2d {
+          intensity: 4.0,
+          radius: 400.0,
+          falloff: 3.0,
+          color: Color::srgb(1.0, 1.0, 0.0),
++         // defaults to true
++         shadows_enabled: false,
+      },
+  ));
+```
+
 ## 0.4.0
 
 ### Features
