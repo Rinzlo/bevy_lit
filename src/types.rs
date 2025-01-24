@@ -51,7 +51,7 @@ impl Default for RaymarchSettings {
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
 #[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld)]
+#[require(SyncToRenderWorld, AmbientLight2d)]
 pub struct Lighting2dSettings {
     /// The blur coc (circle of confusion) dimension contributing to the softness of the shadows
     pub blur: f32,

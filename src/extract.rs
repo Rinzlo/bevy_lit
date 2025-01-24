@@ -16,15 +16,12 @@ pub struct ExtractedLighting2dSettings {
 pub fn extract_lighting_settings(
     mut commands: Commands,
     ambient_light_query: Extract<
-        Query<(RenderEntity, &Lighting2dSettings, Option<&AmbientLight2d>), With<Camera2d>>,
+        Query<(RenderEntity, &Lighting2dSettings, &AmbientLight2d), With<Camera2d>>,
     >,
 ) {
     let values = ambient_light_query
         .iter()
         .map(|(e, settings, ambient_light)| {
-            let default_ambient_light = AmbientLight2d::default();
-            let ambient_light = ambient_light.unwrap_or(&default_ambient_light);
-
             (
                 e,
                 ExtractedLighting2dSettings {
