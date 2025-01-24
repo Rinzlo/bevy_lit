@@ -3,30 +3,31 @@ use bevy::{
     core_pipeline::core_2d::graph::{Core2d, Node2d},
     prelude::*,
     render::{
-        Render, RenderApp, RenderSet,
         extract_component::UniformComponentPlugin,
-        gpu_component_array_buffer::GpuComponentArrayBufferPlugin,
         render_graph::{RenderGraphApp, ViewNodeRunner},
         render_resource::SpecializedRenderPipelines,
-        view::{VisibilitySystems, check_visibility, prepare_view_targets},
+        view::{check_visibility, prepare_view_targets, VisibilitySystems},
+        Render, RenderApp, RenderSet,
     },
 };
 
 use crate::{
     extract::{
-        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
         extract_light_occluders, extract_lighting_settings, extract_point_lights,
+        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
     },
     pipeline::{
-        BLUR_SHADER, LIGHTING_SHADER, Lighting2dPrepassPipelines, LightingLabel, LightingNode,
-        POST_PROCESS_SHADER, PostProcessPipeline, SDF_SHADER, TYPES_SHADER,
+        Lighting2dPrepassPipelines, LightingLabel, LightingNode, PostProcessPipeline, BLUR_SHADER,
+        LIGHTING_SHADER, POST_PROCESS_SHADER, SDF_SHADER, TYPES_SHADER,
         VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, LightOccluder2d, Lighting2dSettings, PointLight2d},
     prepare::{
-        prepare_lighting_auxiliary_textures, prepare_lighting_bind_groups,
-        prepare_post_process_pipelines,
+        prepare_lighting2d_view_array_buffers, prepare_lighting_auxiliary_textures,
+        prepare_lighting_bind_groups, Lighing2dViewArrayBuffer,
     },
+    queue::queue_post_process_pipelines,
+    visibility::check_lighting_2d_artifacts_bounds,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.
@@ -60,20 +61,22 @@ impl Plugin for Lighting2dPlugin {
             Shader::from_wgsl
         );
 
-        app.add_plugins((
-            UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
-            GpuComponentArrayBufferPlugin::<ExtractedPointLight2d>::default(),
-            GpuComponentArrayBufferPlugin::<ExtractedLightOccluder2d>::default(),
-        ))
-        .register_type::<AmbientLight2d>()
-        .register_type::<PointLight2d>()
-        .register_type::<LightOccluder2d>()
-        .register_type::<Lighting2dSettings>()
-        .add_systems(
-            PostUpdate,
-            check_visibility::<Or<(With<PointLight2d>, With<LightOccluder2d>)>>
-                .in_set(VisibilitySystems::CheckVisibility),
-        );
+        app.add_plugins(UniformComponentPlugin::<ExtractedLighting2dSettings>::default())
+            .register_type::<AmbientLight2d>()
+            .register_type::<PointLight2d>()
+            .register_type::<LightOccluder2d>()
+            .register_type::<Lighting2dSettings>()
+            .add_systems(
+                PostUpdate,
+                (
+                    check_lighting_2d_artifacts_bounds.in_set(VisibilitySystems::CalculateBounds),
+                    (
+                        check_visibility::<With<PointLight2d>>,
+                        check_visibility::<With<LightOccluder2d>>,
+                    )
+                        .in_set(VisibilitySystems::CheckVisibility),
+                ),
+            );
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -95,7 +98,15 @@ impl Plugin for Lighting2dPlugin {
                     prepare_lighting_auxiliary_textures
                         .after(prepare_view_targets)
                         .in_set(RenderSet::ManageViews),
-                    prepare_post_process_pipelines.in_set(RenderSet::Prepare),
+                    queue_post_process_pipelines.in_set(RenderSet::Queue),
+                    (
+                    prepare_lighting2d_view_array_buffers::<
+                        ExtractedLightOccluder2d,
+                        LightOccluder2d,
+                    >,
+                    prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>,
+                )
+                    .in_set(RenderSet::PrepareResources),
                     prepare_lighting_bind_groups.in_set(RenderSet::PrepareBindGroups),
                 ),
             )
@@ -109,6 +120,8 @@ impl Plugin for Lighting2dPlugin {
         };
 
         render_app
+            .insert_resource(Lighing2dViewArrayBuffer::<ExtractedLightOccluder2d>::default())
+            .insert_resource(Lighing2dViewArrayBuffer::<ExtractedPointLight2d>::default())
             .init_resource::<Lighting2dPrepassPipelines>()
             .init_resource::<PostProcessPipeline>();
     }

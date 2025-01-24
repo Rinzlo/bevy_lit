@@ -2,7 +2,7 @@ use crate::prelude::*;
 use bevy::render::sync_world::RenderEntity;
 use bevy::{
     prelude::*,
-    render::{Extract, render_resource::ShaderType, view::ViewVisibility},
+    render::{render_resource::ShaderType, view::ViewVisibility, Extract},
 };
 
 #[derive(Component, Clone, ShaderType)]
@@ -22,17 +22,18 @@ pub fn extract_lighting_settings(
     let values = ambient_light_query
         .iter()
         .map(|(e, settings, ambient_light)| {
-            let ambient_light = ambient_light.unwrap_or(&AmbientLight2d {
-                color: Color::WHITE,
-                brightness: 1.0,
-            });
+            let default_ambient_light = AmbientLight2d::default();
+            let ambient_light = ambient_light.unwrap_or(&default_ambient_light);
 
-            (e, ExtractedLighting2dSettings {
-                blur: settings.blur,
-                fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
-                ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
-                raymarch: settings.raymarch.clone(),
-            })
+            (
+                e,
+                ExtractedLighting2dSettings {
+                    blur: settings.blur,
+                    fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
+                    ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
+                    raymarch: settings.raymarch.clone(),
+                },
+            )
         })
         .collect::<Vec<_>>();
 

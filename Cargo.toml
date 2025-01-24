@@ -16,18 +16,12 @@ bevy = { version = "0.15", default-features = false, features = [
   "bevy_core_pipeline",
   "bevy_winit",
   "x11",
-  "png",                # TODO: Remove when bevyengine/bevy#16568 is solved
+  "png", # TODO: Remove when bevyengine/bevy#16568 is solved
 ] }
 
 [dev-dependencies]
-bevy = { version = "0.15", default-features = false, features = [
-  "bevy_window",
-  "bevy_render",
-  "bevy_core_pipeline",
-  "bevy_winit",
-  "bevy_sprite",
-  "x11",
-] }
+bevy = { version = "0.15", default-features = false, features = [ "bevy_window", "bevy_render", "bevy_core_pipeline", "bevy_winit", "bevy_sprite", "x11", "bevy_gizmos"] }
+rand = { version = "0.8.5", features = ["small_rng"]}
 
 [profile.dev]
 opt-level = 1
@@ -42,3 +36,7 @@ too_many_arguments = "allow"
 [[example]]
 name = "basic"
 path = "examples/basic.rs"
+
+[[example]]
+name = "stress_test"
+path = "examples/stress_test.rs"
