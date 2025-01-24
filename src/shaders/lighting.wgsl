@@ -31,9 +31,15 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         let dist = distance(light.center, pos);
 
         if dist < light.radius {
+            var raymarch_contrib = 1.;
+
+            if light.shadows_enabled == 1 {
+                raymarch_contrib = raymarch(light, pos);
+            }
+
             lighting_color += vec4(light.color.rgb, 1.0) *
                 attenuation(light, dist) *
-                raymarch(light, pos);
+                raymarch_contrib;
         }
     }
 

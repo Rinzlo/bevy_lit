@@ -25,4 +25,5 @@ struct PointLight2d {
     falloff: f32,
     intensity: f32,
     radius: f32,
+    shadows_enabled: u32,
 }
