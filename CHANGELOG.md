@@ -4,7 +4,7 @@
 
 ### Features
 
-- Introduced **frustum culling** for lighting artifacts
+- Introduced **frustum culling** for lighting artifacts 🚀
 - Added `shadows_enabled` to `PointLight2d` for shadow projection control
 - Added new `stress_test` example
 
