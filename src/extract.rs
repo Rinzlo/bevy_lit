@@ -78,6 +78,7 @@ pub struct ExtractedPointLight2d {
     pub falloff: f32,
     pub intensity: f32,
     pub radius: f32,
+    pub shadows_enabled: u32,
 }
 
 pub fn extract_point_lights(
@@ -104,6 +105,7 @@ pub fn extract_point_lights(
                 radius: point_light.radius,
                 intensity: point_light.intensity,
                 falloff: point_light.falloff,
+                shadows_enabled: if point_light.shadows_enabled { 1 } else { 0 },
             });
     }
 }

@@ -36,6 +36,7 @@ fn spawn_light(mut commands: Commands) {
             intensity: 3.0,
             radius: 200.0,
             falloff: 2.0,
+            ..default()
         });
 }
 

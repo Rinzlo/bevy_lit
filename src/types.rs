@@ -83,6 +83,8 @@ pub struct PointLight2d {
     pub radius: f32,
     /// The falloff rate of the point light.
     pub falloff: f32,
+    /// wether the point light should project shadows
+    pub shadows_enabled: bool,
 }
 
 impl Default for PointLight2d {
@@ -92,6 +94,7 @@ impl Default for PointLight2d {
             intensity: 1.0,
             radius: 64.0,
             falloff: 1.0,
+            shadows_enabled: true,
         }
     }
 }
