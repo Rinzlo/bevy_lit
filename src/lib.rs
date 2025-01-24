@@ -4,6 +4,7 @@ mod plugin;
 mod prepare;
 mod queue;
 mod types;
+mod visibility;
 
 pub mod prelude {
     pub use crate::plugin::*;

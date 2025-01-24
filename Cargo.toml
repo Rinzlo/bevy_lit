@@ -20,14 +20,7 @@ bevy = { version = "0.15", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-bevy = { version = "0.15", default-features = false, features = [
-  "bevy_window",
-  "bevy_render",
-  "bevy_core_pipeline",
-  "bevy_winit",
-  "bevy_sprite",
-  "x11",
-] }
+bevy = { version = "0.15", default-features = false, features = [ "bevy_window", "bevy_render", "bevy_core_pipeline", "bevy_winit", "bevy_sprite", "x11", "bevy_gizmos"] }
 rand = { version = "0.8.5", features = ["small_rng"]}
 
 [profile.dev]

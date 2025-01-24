@@ -27,6 +27,7 @@ use crate::{
         prepare_lighting_bind_groups, Lighing2dViewArrayBuffer,
     },
     queue::queue_post_process_pipelines,
+    visibility::check_lighting_2d_artifacts_bounds,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.
@@ -68,10 +69,13 @@ impl Plugin for Lighting2dPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    check_visibility::<With<PointLight2d>>,
-                    check_visibility::<With<LightOccluder2d>>,
-                )
-                    .in_set(VisibilitySystems::CheckVisibility),
+                    check_lighting_2d_artifacts_bounds.in_set(VisibilitySystems::CalculateBounds),
+                    (
+                        check_visibility::<With<PointLight2d>>,
+                        check_visibility::<With<LightOccluder2d>>,
+                    )
+                        .in_set(VisibilitySystems::CheckVisibility),
+                ),
             );
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
