@@ -8,11 +8,8 @@ use rand::{self, rngs::SmallRng, Rng, SeedableRng};
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins, Lighting2dPlugin))
-        .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
-        .add_systems(
-            Startup,
-            (spawn_camera, spawn_floor, spawn_barrels, spawn_light),
-        )
+        .insert_resource(ClearColor(Color::from(GRAY_300)))
+        .add_systems(Startup, (spawn_camera, spawn_barrels, spawn_light))
         .add_systems(Update, move_entities)
         .run();
 }
@@ -57,24 +54,6 @@ fn spawn_camera(mut commands: Commands) {
             ..default()
         },
     ));
-}
-
-fn spawn_floor(mut commands: Commands) {
-    for x in -128..128 {
-        for y in -128..128 {
-            commands
-                .spawn(Sprite {
-                    custom_size: Some(Vec2::splat(16.)),
-                    color: Color::from(GRAY_300),
-                    ..default()
-                })
-                .insert(Transform::from_translation(Vec3::new(
-                    (x * 16) as f32,
-                    (y * 16) as f32,
-                    -100.0,
-                )));
-        }
-    }
 }
 
 fn spawn_barrels(mut commands: Commands) {
