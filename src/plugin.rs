@@ -24,9 +24,10 @@ use crate::{
     prelude::{AmbientLight2d, LightOccluder2d, Lighting2dSettings, PointLight2d},
     prepare::{
         prepare_lighting2d_view_array_buffers, prepare_lighting_auxiliary_textures,
-        prepare_lighting_bind_groups, Lighing2dViewArrayBuffer,
+        Lighing2dViewArrayBuffer,
     },
     queue::queue_post_process_pipelines,
+    sdf::SdfPlugin,
     visibility::check_lighting_2d_artifacts_bounds,
 };
 
@@ -61,22 +62,25 @@ impl Plugin for Lighting2dPlugin {
             Shader::from_wgsl
         );
 
-        app.add_plugins(UniformComponentPlugin::<ExtractedLighting2dSettings>::default())
-            .register_type::<AmbientLight2d>()
-            .register_type::<PointLight2d>()
-            .register_type::<LightOccluder2d>()
-            .register_type::<Lighting2dSettings>()
-            .add_systems(
-                PostUpdate,
+        app.add_plugins((
+            UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
+            SdfPlugin,
+        ))
+        .register_type::<AmbientLight2d>()
+        .register_type::<PointLight2d>()
+        .register_type::<LightOccluder2d>()
+        .register_type::<Lighting2dSettings>()
+        .add_systems(
+            PostUpdate,
+            (
+                check_lighting_2d_artifacts_bounds.in_set(VisibilitySystems::CalculateBounds),
                 (
-                    check_lighting_2d_artifacts_bounds.in_set(VisibilitySystems::CalculateBounds),
-                    (
-                        check_visibility::<With<PointLight2d>>,
-                        check_visibility::<With<LightOccluder2d>>,
-                    )
-                        .in_set(VisibilitySystems::CheckVisibility),
-                ),
-            );
+                    check_visibility::<With<PointLight2d>>,
+                    check_visibility::<With<LightOccluder2d>>,
+                )
+                    .in_set(VisibilitySystems::CheckVisibility),
+            ),
+        );
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -107,7 +111,6 @@ impl Plugin for Lighting2dPlugin {
                     prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>,
                 )
                     .in_set(RenderSet::PrepareResources),
-                    prepare_lighting_bind_groups.in_set(RenderSet::PrepareBindGroups),
                 ),
             )
             .add_render_graph_node::<ViewNodeRunner<LightingNode>>(Core2d, LightingLabel)

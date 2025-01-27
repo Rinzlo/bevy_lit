@@ -4,41 +4,51 @@ use bevy::{
     prelude::*,
     render::{
         extract_component::DynamicUniformIndex,
+        render_asset::RenderAssets,
         render_graph::{NodeRunError, RenderGraphContext, RenderLabel, ViewNode},
         render_resource::{
             binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
-            BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, FragmentState, LoadOp, Operations, PipelineCache,
-            RenderPassColorAttachment, RenderPassDescriptor, RenderPipelineDescriptor,
-            SamplerBindingType, SamplerDescriptor, ShaderStages, SpecializedRenderPipeline,
-            StoreOp, TextureFormat, TextureSampleType,
+            BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState,
+            ColorWrites, FragmentState, IntoBindGroupLayoutEntryBuilderArray, PipelineCache,
+            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, SpecializedRenderPipeline,
+            TextureFormat, TextureSampleType,
         },
         renderer::{RenderContext, RenderDevice},
+        texture::GpuImage,
         view::{ViewTarget, ViewUniform, ViewUniformOffset},
     },
 };
 
 use crate::{
     extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
-    prepare::{Lighting2dAuxiliaryTextures, Lighting2dSurfaceBindGroups},
+    passes::{BlurPass, LightingPass, PostProcessPass, SdfPass},
+    prepare::Lighting2dTextures,
     queue::Lighting2dPostProcessPipelineId,
+    sdf::SdfMaskBindGroup,
 };
 
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
 pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> = Handle::weak_from_u128(43290875047924);
+pub const FLOOD_INIT_SHADER: Handle<Shader> = Handle::weak_from_u128(32132157492758);
 pub const SDF_SHADER: Handle<Shader> = Handle::weak_from_u128(57492774892945);
 pub const LIGHTING_SHADER: Handle<Shader> = Handle::weak_from_u128(47320975447604);
 pub const BLUR_SHADER: Handle<Shader> = Handle::weak_from_u128(43806754295913);
 pub const POST_PROCESS_SHADER: Handle<Shader> = Handle::weak_from_u128(57420546547174);
 
-fn create_pipeline_descriptor(
+fn create_pipeline<const N: usize>(
+    render_device: &RenderDevice,
     pipeline_cache: &PipelineCache,
     label: &'static str,
-    layout: &BindGroupLayout,
     shader: Handle<Shader>,
-) -> CachedRenderPipelineId {
-    pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
-        label: Some(label.into()),
+    layout: impl IntoBindGroupLayoutEntryBuilderArray<N>,
+) -> (BindGroupLayout, CachedRenderPipelineId) {
+    let layout = render_device.create_bind_group_layout(
+        &(String::from(label) + "bind_group_layout") as &str,
+        &BindGroupLayoutEntries::sequential(ShaderStages::FRAGMENT, layout),
+    );
+
+    let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
+        label: Some((String::from(label) + "pipeline").into()),
         layout: vec![layout.clone()],
         vertex: fullscreen_shader_vertex_state(),
         fragment: Some(FragmentState {
@@ -56,7 +66,9 @@ fn create_pipeline_descriptor(
         depth_stencil: None,
         multisample: Default::default(),
         zero_initialize_workgroup_memory: false,
-    })
+    });
+
+    (layout, pipeline)
 }
 
 #[derive(Resource)]
@@ -74,58 +86,45 @@ impl FromWorld for Lighting2dPrepassPipelines {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
 
-        let sdf_layout = render_device.create_bind_group_layout(
-            "sdf_bind_group_layout",
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    uniform_buffer::<ViewUniform>(true),
-                    storage_buffer_read_only::<ExtractedLightOccluder2d>(false),
-                    uniform_buffer::<u32>(false),
-                ),
-            ),
-        );
-
-        let sdf_pipeline =
-            create_pipeline_descriptor(pipeline_cache, "sdf_pipeline", &sdf_layout, SDF_SHADER);
-
-        let lighting_layout = render_device.create_bind_group_layout(
-            "lighting_bind_group_layout",
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    uniform_buffer::<ViewUniform>(true),
-                    uniform_buffer::<ExtractedLighting2dSettings>(true),
-                    storage_buffer_read_only::<ExtractedPointLight2d>(false),
-                    uniform_buffer::<u32>(false),
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                ),
-            ),
-        );
-
-        let lighting_pipeline = create_pipeline_descriptor(
+        let (sdf_layout, sdf_pipeline) = create_pipeline(
+            render_device,
             pipeline_cache,
-            "lighting_pipeline",
-            &lighting_layout,
-            LIGHTING_SHADER,
-        );
-
-        let blur_layout = render_device.create_bind_group_layout(
-            "blur_bind_group_layout",
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    uniform_buffer::<ViewUniform>(true),
-                    uniform_buffer::<ExtractedLighting2dSettings>(true),
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                ),
+            "sdf",
+            SDF_SHADER,
+            (
+                uniform_buffer::<ViewUniform>(true),
+                storage_buffer_read_only::<ExtractedLightOccluder2d>(false),
+                uniform_buffer::<u32>(false),
             ),
         );
 
-        let blur_pipeline =
-            create_pipeline_descriptor(pipeline_cache, "blur_pipeline", &blur_layout, BLUR_SHADER);
+        let (lighting_layout, lighting_pipeline) = create_pipeline(
+            render_device,
+            pipeline_cache,
+            "lighting",
+            LIGHTING_SHADER,
+            (
+                uniform_buffer::<ViewUniform>(true),
+                uniform_buffer::<ExtractedLighting2dSettings>(true),
+                storage_buffer_read_only::<ExtractedPointLight2d>(false),
+                uniform_buffer::<u32>(false),
+                texture_2d(TextureSampleType::Float { filterable: true }),
+                sampler(SamplerBindingType::Filtering),
+            ),
+        );
+
+        let (blur_layout, blur_pipeline) = create_pipeline(
+            render_device,
+            pipeline_cache,
+            "blur",
+            BLUR_SHADER,
+            (
+                uniform_buffer::<ViewUniform>(true),
+                uniform_buffer::<ExtractedLighting2dSettings>(true),
+                texture_2d(TextureSampleType::Float { filterable: true }),
+                sampler(SamplerBindingType::Filtering),
+            ),
+        );
 
         Self {
             sdf_layout,
@@ -145,10 +144,8 @@ pub struct PostProcessPipeline {
 
 impl FromWorld for PostProcessPipeline {
     fn from_world(world: &mut World) -> Self {
-        let render_device = world.resource::<RenderDevice>();
-
         Self {
-            layout: render_device.create_bind_group_layout(
+            layout: world.resource::<RenderDevice>().create_bind_group_layout(
                 "post_process_bind_group_layout",
                 &BindGroupLayoutEntries::sequential(
                     ShaderStages::FRAGMENT,
@@ -210,139 +207,79 @@ impl ViewNode for LightingNode {
         Read<ViewTarget>,
         Read<ViewUniformOffset>,
         Read<Lighting2dPostProcessPipelineId>,
-        Read<Lighting2dAuxiliaryTextures>,
-        Read<Lighting2dSurfaceBindGroups>,
+        Read<SdfMaskBindGroup>,
+        Read<Lighting2dTextures>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
+        Read<ExtractedLighting2dSettings>,
     );
 
     fn run<'w>(
         &self,
-        _: &mut RenderGraphContext,
+        graph: &mut RenderGraphContext,
         ctx: &mut RenderContext<'w>,
         (
             view_target,
-            view_uniform,
+            view_uniform_offset,
             post_process_pipeline_id,
-            aux_textures,
-            bind_groups,
-            settings_index,
+            sdf_mask_bind_group,
+            flood_textures,
+            settings_uniform_index,
+            lighting_settings,
         ): QueryItem<'w, Self::ViewQuery>,
         world: &'w World,
     ) -> Result<(), NodeRunError> {
-        let pipeline_cache = world.resource::<PipelineCache>();
-        let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
-
-        let (
-            Some(sdf_pipeline),
-            Some(lighting_pipeline),
-            Some(blur_pipeline),
-            Some(post_process_pipeline),
-        ) = (
-            pipeline_cache.get_render_pipeline(prepass_pipelines.sdf_pipeline),
-            pipeline_cache.get_render_pipeline(prepass_pipelines.lighting_pipeline),
-            pipeline_cache.get_render_pipeline(prepass_pipelines.blur_pipeline),
-            pipeline_cache.get_render_pipeline(post_process_pipeline_id.0),
-        )
+        let Some(mask) = world
+            .resource::<RenderAssets<GpuImage>>()
+            .get(&sdf_mask_bind_group.handle)
         else {
             return Ok(());
         };
 
+        let mut flood_textures = flood_textures.clone();
+
         // SDF
-        let mut sdf_pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("sdf_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &aux_textures.sdf.default_view,
-                resolve_target: None,
-                ops: Operations::default(),
-            })],
-            ..default()
-        });
-
-        sdf_pass.set_render_pipeline(sdf_pipeline);
-        sdf_pass.set_bind_group(0, &bind_groups.sdf, &[view_uniform.offset]);
-        sdf_pass.draw(0..3, 0..1);
-
-        drop(sdf_pass);
+        let mut sdf_pass = SdfPass::new(world);
+        sdf_pass.execute(
+            ctx,
+            flood_textures.output(),
+            &graph.view_entity(),
+            view_uniform_offset.offset,
+        );
+        flood_textures.flip();
 
         // Lighting
-        let mut lighting_pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("lighting_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &aux_textures.lighting.default_view,
-                resolve_target: None,
-                ops: Operations::default(),
-            })],
-            ..default()
-        });
-
-        lighting_pass.set_render_pipeline(lighting_pipeline);
-        lighting_pass.set_bind_group(
-            0,
-            &bind_groups.lighting,
-            &[view_uniform.offset, settings_index.index()],
+        let mut lighting_pass = LightingPass::new(world);
+        lighting_pass.execute(
+            ctx,
+            flood_textures.input(),
+            flood_textures.output(),
+            &graph.view_entity(),
+            view_uniform_offset.offset,
+            settings_uniform_index.index(),
         );
-        lighting_pass.draw(0..3, 0..1);
-
-        drop(lighting_pass);
+        flood_textures.flip();
 
         // Blur
-        if let Some(blur_texture) = &aux_textures.blur {
-            let mut blur_pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
-                label: Some("blur_pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &blur_texture.default_view,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Load,
-                        store: StoreOp::Store,
-                    },
-                })],
-                ..default()
-            });
-
-            blur_pass.set_bind_group(
-                0,
-                &bind_groups.blur,
-                &[view_uniform.offset, settings_index.index()],
+        if lighting_settings.blur > 0.0 {
+            let mut blur_pass = BlurPass::new(world);
+            blur_pass.execute(
+                ctx,
+                flood_textures.input(),
+                flood_textures.output(),
+                view_uniform_offset.offset,
+                settings_uniform_index.index(),
             );
-            blur_pass.set_render_pipeline(blur_pipeline);
-            blur_pass.draw(0..3, 0..1);
+            flood_textures.flip();
         }
 
         // Post Process
-        let post_process = view_target.post_process_write();
-
-        let sampler = ctx
-            .render_device()
-            .create_sampler(&SamplerDescriptor::default());
-
-        let post_process_bind_group = ctx.render_device().create_bind_group(
-            "post_process_bind_group",
-            &world.resource::<PostProcessPipeline>().layout,
-            &BindGroupEntries::sequential((
-                post_process.source,
-                if let Some(blur_texture) = &aux_textures.blur {
-                    &blur_texture.default_view
-                } else {
-                    &aux_textures.lighting.default_view
-                },
-                &sampler,
-            )),
+        let mut post_process_pass = PostProcessPass::new(world);
+        post_process_pass.execute(
+            ctx,
+            flood_textures.input(),
+            view_target,
+            post_process_pipeline_id.0,
         );
-
-        let mut pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("post_process_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: post_process.destination,
-                resolve_target: None,
-                ops: Operations::default(),
-            })],
-            ..default()
-        });
-
-        pass.set_bind_group(0, &post_process_bind_group, &[]);
-        pass.set_render_pipeline(post_process_pipeline);
-        pass.draw(0..3, 0..1);
 
         Ok(())
     }

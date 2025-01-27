@@ -8,6 +8,8 @@ use bevy::{
     transform::components::Transform,
 };
 
+use crate::sdf::{SdfCamera, SdfElement};
+
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
 #[require(SyncToRenderWorld)]
@@ -51,7 +53,7 @@ impl Default for RaymarchSettings {
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
 #[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, AmbientLight2d)]
+#[require(SyncToRenderWorld, AmbientLight2d, SdfCamera)]
 pub struct Lighting2dSettings {
     /// The blur coc (circle of confusion) dimension contributing to the softness of the shadows
     pub blur: f32,
@@ -136,3 +138,7 @@ pub struct LightOccluder2dBundle {
     /// The visibility component.
     pub visibility: Visibility,
 }
+
+#[derive(Component, Clone, Debug, Default)]
+#[require(SdfElement)]
+pub struct OccluderMarker;

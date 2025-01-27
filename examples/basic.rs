@@ -89,6 +89,7 @@ fn setup(mut commands: Commands) {
             radius: 400.0,
             falloff: 3.0,
             color: Color::srgb(1.0, 1.0, 0.0),
+            ..default()
         },
     ));
 }

@@ -1,8 +1,10 @@
 mod extract;
+mod passes;
 mod pipeline;
 mod plugin;
 mod prepare;
 mod queue;
+mod sdf;
 mod types;
 mod visibility;
 
