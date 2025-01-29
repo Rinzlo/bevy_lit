@@ -56,28 +56,26 @@ fn spawn_camera(mut commands: Commands) {
     ));
 }
 
-fn spawn_barrels(mut commands: Commands) {
+fn spawn_barrels(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
     let mut rng = SmallRng::seed_from_u64(0);
 
     // spawns 32732 light occluders
     for x in -128..128 {
         for y in -128..128 {
-            if x == 0 || rng.gen_bool(0.5) {
+            if x == 0 || rng.random_bool(0.5) {
                 continue;
             }
 
-            commands
-                .spawn(Sprite {
-                    custom_size: Some(Vec2::splat(8.)),
-                    color: Color::from(GRAY_800),
-                    ..default()
-                })
-                .insert(Transform::from_translation(Vec3::new(
-                    (x * 16) as f32,
-                    (y * 16) as f32,
-                    -25.0,
-                )))
-                .insert(OccluderMarker);
+            commands.spawn((
+                Mesh2d(meshes.add(Circle::new(4.))),
+                MeshMaterial2d(materials.add(Color::from(GRAY_800))),
+                Transform::from_translation(Vec3::new((x * 16) as f32, (y * 16) as f32, -25.0)),
+                LightOccluder2d,
+            ));
         }
     }
 }

@@ -65,7 +65,7 @@ fn setup(
         commands.spawn((
             Mesh2d(shape),
             MeshMaterial2d(materials.add(color)),
-            OccluderMarker,
+            LightOccluder2d,
             Transform::from_xyz(
                 // Distribute shapes from -X_EXTENT/2 to +X_EXTENT/2.
                 -X_EXTENT / 2. + i as f32 / (num_shapes - 1) as f32 * X_EXTENT,

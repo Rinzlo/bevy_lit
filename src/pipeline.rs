@@ -22,19 +22,18 @@ use bevy::{
 use crate::{
     extract::{ExtractedLighting2dSettings, ExtractedPointLight2d},
     flood::FloodMask,
-    passes::{BlurPass, FloodInitPass, FloodPass, LightingPass, PostProcessPass},
+    passes::{BlurPass, CompositePass, FloodInitPass, FloodPass, LightingPass},
     prepare::Lighting2dTextures,
-    queue::Lighting2dPostProcessPipelineId,
+    queue::Lighting2dCompositePipelineId,
 };
 
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
 pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> = Handle::weak_from_u128(43290875047924);
 pub const FLOOD_INIT_SHADER: Handle<Shader> = Handle::weak_from_u128(32132157492758);
-pub const SDF_SHADER: Handle<Shader> = Handle::weak_from_u128(83120957404347);
 pub const FLOOD_SHADER: Handle<Shader> = Handle::weak_from_u128(57492774892945);
 pub const LIGHTING_SHADER: Handle<Shader> = Handle::weak_from_u128(47320975447604);
 pub const BLUR_SHADER: Handle<Shader> = Handle::weak_from_u128(43806754295913);
-pub const POST_PROCESS_SHADER: Handle<Shader> = Handle::weak_from_u128(57420546547174);
+pub const COMPOSITE_SHADER: Handle<Shader> = Handle::weak_from_u128(57420546547174);
 
 fn create_pipeline(
     render_device: &RenderDevice,
@@ -166,15 +165,15 @@ impl FromWorld for Lighting2dPrepassPipelines {
 }
 
 #[derive(Resource)]
-pub struct PostProcessPipeline {
+pub struct Lighting2dCompositePipeline {
     pub layout: BindGroupLayout,
 }
 
-impl FromWorld for PostProcessPipeline {
+impl FromWorld for Lighting2dCompositePipeline {
     fn from_world(world: &mut World) -> Self {
         Self {
             layout: world.resource::<RenderDevice>().create_bind_group_layout(
-                "post_process_bind_group_layout",
+                "composite_bind_group_layout",
                 &BindGroupLayoutEntries::sequential(
                     ShaderStages::FRAGMENT,
                     (
@@ -193,16 +192,16 @@ pub struct Lighting2dPipelineKey {
     pub hdr: bool,
 }
 
-impl SpecializedRenderPipeline for PostProcessPipeline {
+impl SpecializedRenderPipeline for Lighting2dCompositePipeline {
     type Key = Lighting2dPipelineKey;
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
         RenderPipelineDescriptor {
-            label: Some("post_process_pipeline".into()),
+            label: Some("composite_pipeline".into()),
             layout: vec![self.layout.clone()],
             vertex: fullscreen_shader_vertex_state(),
             fragment: Some(FragmentState {
-                shader: POST_PROCESS_SHADER,
+                shader: COMPOSITE_SHADER,
                 shader_defs: vec![],
                 entry_point: "fragment".into(),
                 targets: vec![Some(ColorTargetState {
@@ -234,7 +233,7 @@ impl ViewNode for LightingNode {
     type ViewQuery = (
         Read<ViewTarget>,
         Read<ViewUniformOffset>,
-        Read<Lighting2dPostProcessPipelineId>,
+        Read<Lighting2dCompositePipelineId>,
         Read<FloodMask>,
         Read<Lighting2dTextures>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
@@ -248,7 +247,7 @@ impl ViewNode for LightingNode {
         (
             view_target,
             view_uniform_offset,
-            post_process_pipeline_id,
+            composite_pipeline_id,
             sdf_mask_bind_group,
             flood_textures,
             settings_uniform_index,
@@ -311,12 +310,12 @@ impl ViewNode for LightingNode {
         }
 
         // Post Process
-        let mut post_process_pass = PostProcessPass::new(world);
-        post_process_pass.execute(
+        let mut composite_pass = CompositePass::new(world);
+        composite_pass.execute(
             ctx,
             flood_textures.input(),
             view_target,
-            post_process_pipeline_id.0,
+            composite_pipeline_id.0,
         );
 
         Ok(())

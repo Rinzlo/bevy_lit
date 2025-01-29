@@ -38,37 +38,6 @@ pub fn extract_lighting_settings(
 }
 
 #[derive(Component, Default, Clone, ShaderType)]
-pub struct ExtractedLightOccluder2d {
-    pub center: Vec2,
-    pub half_size: Vec2,
-}
-
-pub fn extract_light_occluders(
-    mut commands: Commands,
-    light_occluders_query: Extract<
-        Query<(
-            RenderEntity,
-            &LightOccluder2d,
-            &GlobalTransform,
-            &ViewVisibility,
-        )>,
-    >,
-) {
-    for (render_entity, light_occluder, transform, view_visibility) in &light_occluders_query {
-        if !view_visibility.get() {
-            continue;
-        }
-
-        commands
-            .entity(render_entity)
-            .insert(ExtractedLightOccluder2d {
-                half_size: light_occluder.half_size,
-                center: transform.translation().xy(),
-            });
-    }
-}
-
-#[derive(Component, Default, Clone, ShaderType)]
 pub struct ExtractedPointLight2d {
     pub center: Vec2,
     pub color: LinearRgba,

@@ -15,7 +15,7 @@ use bevy::{
 
 use crate::{
     extract::{ExtractedLighting2dSettings, ExtractedPointLight2d},
-    pipeline::{Lighting2dPrepassPipelines, PostProcessPipeline},
+    pipeline::{Lighting2dCompositePipeline, Lighting2dPrepassPipelines},
     prepare::Lighing2dViewArrayBuffer,
 };
 
@@ -277,11 +277,11 @@ impl<'w> BlurPass<'w> {
     }
 }
 
-pub struct PostProcessPass<'w> {
+pub struct CompositePass<'w> {
     world: &'w World,
 }
 
-impl<'w> PostProcessPass<'w> {
+impl<'w> CompositePass<'w> {
     pub fn new(world: &'w World) -> Self {
         Self { world }
     }
@@ -305,13 +305,13 @@ impl<'w> PostProcessPass<'w> {
             .create_sampler(&SamplerDescriptor::default());
 
         let bind_group = ctx.render_device().create_bind_group(
-            "post_process_bind_group",
-            &self.world.resource::<PostProcessPipeline>().layout,
+            "composite_bind_group",
+            &self.world.resource::<Lighting2dCompositePipeline>().layout,
             &BindGroupEntries::sequential((post_process.source, &input.default_view, &sampler)),
         );
 
         let mut pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("post_process_pass"),
+            label: Some("composite_pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: &post_process.destination,
                 resolve_target: None,

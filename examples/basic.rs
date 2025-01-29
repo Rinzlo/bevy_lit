@@ -49,9 +49,7 @@ fn setup(mut commands: Commands) {
                 ..default()
             },
             Transform::from_translation(pos),
-            LightOccluder2d {
-                half_size: Vec2::splat(50.0),
-            },
+            LightOccluder2d,
         ));
     });
 

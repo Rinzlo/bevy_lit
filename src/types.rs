@@ -1,7 +1,6 @@
 #![expect(deprecated)]
 
 use bevy::{
-    math::Vec2,
     prelude::*,
     reflect::Reflect,
     render::{render_resource::ShaderType, sync_world::SyncToRenderWorld, view::Visibility},
@@ -113,32 +112,6 @@ pub struct PointLight2dBundle {
     pub visibility: Visibility,
 }
 
-/// Represents an occluder that blocks light in a 2D environment.
-#[derive(Component, Default, Clone, Reflect)]
-#[require(SyncToRenderWorld, Transform, Visibility)]
-pub struct LightOccluder2d {
-    /// Half the size of the occluder AABB rectangle.
-    pub half_size: Vec2,
-}
-
-impl LightOccluder2d {
-    pub fn new(half_size: Vec2) -> Self {
-        Self { half_size }
-    }
-}
-
-/// A bundle of components representing a light occluder in a 2D environment.
-#[deprecated(since = "0.4.0", note = "Use the `LightOccluder2d` component instead.")]
-#[derive(Bundle, Default)]
-pub struct LightOccluder2dBundle {
-    /// The light occluder component.
-    pub light_occluder: LightOccluder2d,
-    /// The transform component.
-    pub transform: Transform,
-    /// The visibility component.
-    pub visibility: Visibility,
-}
-
 #[derive(Component, Clone, Debug, Default)]
 #[require(FloodElement)]
-pub struct OccluderMarker;
+pub struct LightOccluder2d;
