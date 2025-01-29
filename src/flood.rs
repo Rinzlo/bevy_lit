@@ -5,8 +5,7 @@ use bevy::{
         camera::RenderTarget,
         extract_component::{ExtractComponent, ExtractComponentPlugin},
         render_resource::{
-            AsBindGroup, Extent3d, TextureDescriptor, TextureDimension, TextureFormat,
-            TextureUsages,
+            Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         },
         view::RenderLayers,
     },
@@ -14,36 +13,35 @@ use bevy::{
 
 const SDF_LAYER: usize = 11;
 
-pub struct SdfPlugin;
+pub struct FloodPlugin;
 
-impl Plugin for SdfPlugin {
+impl Plugin for FloodPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(ExtractComponentPlugin::<SdfMaskBindGroup>::default())
+        app.add_plugins(ExtractComponentPlugin::<FloodMask>::default())
             .add_systems(
                 Update,
-                (spawn_sdf_masks, spawn_sdf_elements, resize_sdf_mask),
+                (spawn_flood_masks, spawn_flood_elements, resize_flood_mask),
             );
     }
 }
 
 #[derive(Component, Default)]
-pub struct SdfCamera;
+pub struct FloodCamera;
 
 #[derive(Component, Clone)]
-pub struct DerivedSdfCamera;
+pub struct DerivedFloodCamera;
 
-#[derive(Component, TypePath, AsBindGroup, ExtractComponent, Clone)]
-pub struct SdfMaskBindGroup {
-    #[texture(0)]
+#[derive(Component, TypePath, ExtractComponent, Clone)]
+pub struct FloodMask {
     pub handle: Handle<Image>,
 }
 
 #[derive(Component, Default)]
-pub struct SdfElement;
+pub struct FloodElement;
 
-fn spawn_sdf_masks(
+fn spawn_flood_masks(
     mut commands: Commands,
-    cameras: Query<(Entity, &Camera, &OrthographicProjection, &Transform), Added<SdfCamera>>,
+    cameras: Query<(Entity, &Camera, &OrthographicProjection, &Transform), Added<FloodCamera>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     for (entity, camera, projection, transform) in &cameras {
@@ -71,7 +69,7 @@ fn spawn_sdf_masks(
 
         let mut canvas = Image {
             texture_descriptor,
-            sampler: ImageSampler::nearest(),
+            sampler: ImageSampler::linear(),
             ..default()
         };
 
@@ -82,13 +80,13 @@ fn spawn_sdf_masks(
         let camera = Camera {
             order: -1,
             target: RenderTarget::Image(handle.clone()),
-            clear_color: ClearColorConfig::Custom(Color::srgba(-1., -1., -1., -1.)),
+            clear_color: ClearColorConfig::Custom(Color::NONE),
             ..camera.clone()
         };
 
-        commands.entity(entity).insert(SdfMaskBindGroup { handle });
+        commands.entity(entity).insert(FloodMask { handle });
         commands.spawn((
-            DerivedSdfCamera,
+            DerivedFloodCamera,
             Name::new("SDF Camera"),
             Camera2d,
             camera,
@@ -99,18 +97,18 @@ fn spawn_sdf_masks(
     }
 }
 
-fn resize_sdf_mask(
-    cameras: Query<(&Camera, &SdfMaskBindGroup), (With<SdfCamera>, Changed<Camera>)>,
+fn resize_flood_mask(
+    cameras: Query<(&Camera, &FloodMask), (With<FloodCamera>, Changed<Camera>)>,
     mut images: ResMut<Assets<Image>>,
 ) {
     for (camera, sdf_mask) in &cameras {
         let canvas = images
             .get_mut(&sdf_mask.handle)
-            .expect("sdf camera should handle shouldn't be empty");
+            .expect("flood camera should handle shouldn't be empty");
 
         let viewport_size = camera
             .logical_viewport_size()
-            .expect("sdf camera viewport should have a size")
+            .expect("flood camera viewport should have a size")
             .as_uvec2();
 
         if canvas.size() == viewport_size {
@@ -125,9 +123,9 @@ fn resize_sdf_mask(
     }
 }
 
-fn spawn_sdf_elements(
+fn spawn_flood_elements(
     mut commands: Commands,
-    sdf_elements: Query<(Entity, Option<&RenderLayers>), Added<SdfElement>>,
+    sdf_elements: Query<(Entity, Option<&RenderLayers>), Added<FloodElement>>,
 ) {
     for (entity, maybe_render_layer) in &sdf_elements {
         let main_layer = RenderLayers::layer(0);

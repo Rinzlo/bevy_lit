@@ -77,9 +77,7 @@ fn spawn_barrels(mut commands: Commands) {
                     (y * 16) as f32,
                     -25.0,
                 )))
-                .insert(LightOccluder2d {
-                    half_size: Vec2::splat(4.0),
-                });
+                .insert(OccluderMarker);
         }
     }
 }
@@ -89,12 +87,13 @@ fn move_entities(
     mut camera_query: Query<&mut Transform, (With<Camera>, Without<Torch>)>,
     time: Res<Time>,
 ) {
-    if let Ok(mut camera_transform) = camera_query.get_single_mut() {
-        if let Ok(mut torch_transform) = torch_query.get_single_mut() {
-            camera_transform.translation.y =
-                camera_transform.translation.y + 16.0 * time.delta_secs();
+    let Ok(mut torch_transform) = torch_query.get_single_mut() else {
+        return;
+    };
 
-            torch_transform.translation.y = camera_transform.translation.y;
-        }
+    torch_transform.translation.y += 16.0 * time.delta_secs();
+
+    for mut camera_transform in &mut camera_query {
+        camera_transform.translation.y = torch_transform.translation.y;
     }
 }

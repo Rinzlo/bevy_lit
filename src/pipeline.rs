@@ -8,10 +8,10 @@ use bevy::{
         render_graph::{NodeRunError, RenderGraphContext, RenderLabel, ViewNode},
         render_resource::{
             binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
-            BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState,
-            ColorWrites, FragmentState, IntoBindGroupLayoutEntryBuilderArray, PipelineCache,
-            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, SpecializedRenderPipeline,
-            TextureFormat, TextureSampleType,
+            BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, CachedRenderPipelineId,
+            ColorTargetState, ColorWrites, FragmentState, PipelineCache, RenderPipelineDescriptor,
+            SamplerBindingType, ShaderStages, SpecializedRenderPipeline, TextureFormat,
+            TextureSampleType,
         },
         renderer::{RenderContext, RenderDevice},
         texture::GpuImage,
@@ -20,35 +20,36 @@ use bevy::{
 };
 
 use crate::{
-    extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
-    passes::{BlurPass, LightingPass, PostProcessPass, SdfPass},
+    extract::{ExtractedLighting2dSettings, ExtractedPointLight2d},
+    flood::FloodMask,
+    passes::{BlurPass, FloodInitPass, FloodPass, LightingPass, PostProcessPass},
     prepare::Lighting2dTextures,
     queue::Lighting2dPostProcessPipelineId,
-    sdf::SdfMaskBindGroup,
 };
 
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
 pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> = Handle::weak_from_u128(43290875047924);
 pub const FLOOD_INIT_SHADER: Handle<Shader> = Handle::weak_from_u128(32132157492758);
-pub const SDF_SHADER: Handle<Shader> = Handle::weak_from_u128(57492774892945);
+pub const SDF_SHADER: Handle<Shader> = Handle::weak_from_u128(83120957404347);
+pub const FLOOD_SHADER: Handle<Shader> = Handle::weak_from_u128(57492774892945);
 pub const LIGHTING_SHADER: Handle<Shader> = Handle::weak_from_u128(47320975447604);
 pub const BLUR_SHADER: Handle<Shader> = Handle::weak_from_u128(43806754295913);
 pub const POST_PROCESS_SHADER: Handle<Shader> = Handle::weak_from_u128(57420546547174);
 
-fn create_pipeline<const N: usize>(
+fn create_pipeline(
     render_device: &RenderDevice,
     pipeline_cache: &PipelineCache,
     label: &'static str,
     shader: Handle<Shader>,
-    layout: impl IntoBindGroupLayoutEntryBuilderArray<N>,
+    entries: &[BindGroupLayoutEntry],
 ) -> (BindGroupLayout, CachedRenderPipelineId) {
     let layout = render_device.create_bind_group_layout(
-        &(String::from(label) + "bind_group_layout") as &str,
-        &BindGroupLayoutEntries::sequential(ShaderStages::FRAGMENT, layout),
+        &(String::from(label) + "_bind_group_layout") as &str,
+        entries,
     );
 
     let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
-        label: Some((String::from(label) + "pipeline").into()),
+        label: Some((String::from(label) + "_pipeline").into()),
         layout: vec![layout.clone()],
         vertex: fullscreen_shader_vertex_state(),
         fragment: Some(FragmentState {
@@ -73,8 +74,10 @@ fn create_pipeline<const N: usize>(
 
 #[derive(Resource)]
 pub struct Lighting2dPrepassPipelines {
-    pub sdf_layout: BindGroupLayout,
-    pub sdf_pipeline: CachedRenderPipelineId,
+    pub flood_init_layout: BindGroupLayout,
+    pub flood_init_pipeline: CachedRenderPipelineId,
+    pub flood_layout: BindGroupLayout,
+    pub flood_pipeline: CachedRenderPipelineId,
     pub lighting_layout: BindGroupLayout,
     pub lighting_pipeline: CachedRenderPipelineId,
     pub blur_layout: BindGroupLayout,
@@ -86,15 +89,32 @@ impl FromWorld for Lighting2dPrepassPipelines {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
 
-        let (sdf_layout, sdf_pipeline) = create_pipeline(
+        let (flood_init_layout, flood_init_pipeline) = create_pipeline(
             render_device,
             pipeline_cache,
-            "sdf",
-            SDF_SHADER,
-            (
-                uniform_buffer::<ViewUniform>(true),
-                storage_buffer_read_only::<ExtractedLightOccluder2d>(false),
-                uniform_buffer::<u32>(false),
+            "flood_init",
+            FLOOD_INIT_SHADER,
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
+                ),
+            ),
+        );
+
+        let (flood_layout, flood_pipeline) = create_pipeline(
+            render_device,
+            pipeline_cache,
+            "flood",
+            FLOOD_SHADER,
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
+                    uniform_buffer::<u32>(false),
+                ),
             ),
         );
 
@@ -103,13 +123,16 @@ impl FromWorld for Lighting2dPrepassPipelines {
             pipeline_cache,
             "lighting",
             LIGHTING_SHADER,
-            (
-                uniform_buffer::<ViewUniform>(true),
-                uniform_buffer::<ExtractedLighting2dSettings>(true),
-                storage_buffer_read_only::<ExtractedPointLight2d>(false),
-                uniform_buffer::<u32>(false),
-                texture_2d(TextureSampleType::Float { filterable: true }),
-                sampler(SamplerBindingType::Filtering),
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    uniform_buffer::<ViewUniform>(true),
+                    uniform_buffer::<ExtractedLighting2dSettings>(true),
+                    storage_buffer_read_only::<ExtractedPointLight2d>(false),
+                    uniform_buffer::<u32>(false),
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
+                ),
             ),
         );
 
@@ -118,17 +141,22 @@ impl FromWorld for Lighting2dPrepassPipelines {
             pipeline_cache,
             "blur",
             BLUR_SHADER,
-            (
-                uniform_buffer::<ViewUniform>(true),
-                uniform_buffer::<ExtractedLighting2dSettings>(true),
-                texture_2d(TextureSampleType::Float { filterable: true }),
-                sampler(SamplerBindingType::Filtering),
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    uniform_buffer::<ViewUniform>(true),
+                    uniform_buffer::<ExtractedLighting2dSettings>(true),
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
+                ),
             ),
         );
 
         Self {
-            sdf_layout,
-            sdf_pipeline,
+            flood_init_layout,
+            flood_init_pipeline,
+            flood_layout,
+            flood_pipeline,
             lighting_layout,
             lighting_pipeline,
             blur_layout,
@@ -207,7 +235,7 @@ impl ViewNode for LightingNode {
         Read<ViewTarget>,
         Read<ViewUniformOffset>,
         Read<Lighting2dPostProcessPipelineId>,
-        Read<SdfMaskBindGroup>,
+        Read<FloodMask>,
         Read<Lighting2dTextures>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
         Read<ExtractedLighting2dSettings>,
@@ -237,15 +265,25 @@ impl ViewNode for LightingNode {
 
         let mut flood_textures = flood_textures.clone();
 
-        // SDF
-        let mut sdf_pass = SdfPass::new(world);
-        sdf_pass.execute(
-            ctx,
-            flood_textures.output(),
-            &graph.view_entity(),
-            view_uniform_offset.offset,
-        );
+        // Flood init
+        let mut flood_init_pass = FloodInitPass::new(world);
+        flood_init_pass.execute(ctx, &mask.texture_view, flood_textures.output());
         flood_textures.flip();
+
+        // Flood
+        let mut flood_pass = FloodPass::new(world);
+
+        let mut step = view_target
+            .main_texture()
+            .width()
+            .max(view_target.main_texture().height())
+            / 2;
+
+        while step >= 1 {
+            flood_pass.execute(ctx, flood_textures.input(), flood_textures.output(), step);
+            flood_textures.flip();
+            step /= 2; // Halve the step size
+        }
 
         // Lighting
         let mut lighting_pass = LightingPass::new(world);

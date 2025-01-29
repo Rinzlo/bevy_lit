@@ -16,10 +16,11 @@ use crate::{
         extract_light_occluders, extract_lighting_settings, extract_point_lights,
         ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
     },
+    flood::FloodPlugin,
     pipeline::{
         Lighting2dPrepassPipelines, LightingLabel, LightingNode, PostProcessPipeline, BLUR_SHADER,
-        LIGHTING_SHADER, POST_PROCESS_SHADER, SDF_SHADER, TYPES_SHADER,
-        VIEW_TRANSFORMATIONS_SHADER,
+        FLOOD_INIT_SHADER, FLOOD_SHADER, LIGHTING_SHADER, POST_PROCESS_SHADER, SDF_SHADER,
+        TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, LightOccluder2d, Lighting2dSettings, PointLight2d},
     prepare::{
@@ -27,7 +28,6 @@ use crate::{
         Lighing2dViewArrayBuffer,
     },
     queue::queue_post_process_pipelines,
-    sdf::SdfPlugin,
     visibility::check_lighting_2d_artifacts_bounds,
 };
 
@@ -47,6 +47,13 @@ impl Plugin for Lighting2dPlugin {
             "shaders/view_transformations.wgsl",
             Shader::from_wgsl
         );
+        load_internal_asset!(
+            app,
+            FLOOD_INIT_SHADER,
+            "shaders/flood_init.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(app, FLOOD_SHADER, "shaders/flood.wgsl", Shader::from_wgsl);
         load_internal_asset!(app, SDF_SHADER, "shaders/sdf.wgsl", Shader::from_wgsl);
         load_internal_asset!(
             app,
@@ -64,7 +71,7 @@ impl Plugin for Lighting2dPlugin {
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
-            SdfPlugin,
+            FloodPlugin,
         ))
         .register_type::<AmbientLight2d>()
         .register_type::<PointLight2d>()

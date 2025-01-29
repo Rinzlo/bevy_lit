@@ -4,25 +4,26 @@ use bevy::{
         extract_component::ComponentUniforms,
         render_resource::{
             BindGroupEntries, CachedRenderPipelineId, Operations, PipelineCache,
-            RenderPassColorAttachment, RenderPassDescriptor, SamplerDescriptor,
+            RenderPassColorAttachment, RenderPassDescriptor, SamplerDescriptor, TextureView,
+            UniformBuffer,
         },
-        renderer::RenderContext,
+        renderer::{RenderContext, RenderQueue},
         texture::CachedTexture,
         view::{ViewTarget, ViewUniforms},
     },
 };
 
 use crate::{
-    extract::{ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d},
+    extract::{ExtractedLighting2dSettings, ExtractedPointLight2d},
     pipeline::{Lighting2dPrepassPipelines, PostProcessPipeline},
     prepare::Lighing2dViewArrayBuffer,
 };
 
-pub struct SdfPass<'w> {
+pub struct FloodInitPass<'w> {
     world: &'w World,
 }
 
-impl<'w> SdfPass<'w> {
+impl<'w> FloodInitPass<'w> {
     pub fn new(world: &'w World) -> Self {
         Self { world }
     }
@@ -30,39 +31,31 @@ impl<'w> SdfPass<'w> {
     pub fn execute(
         &mut self,
         ctx: &mut RenderContext<'_>,
+        input: &TextureView,
         output: &CachedTexture,
-        view_entity: &Entity,
-        view_uniform_offset: u32,
     ) {
         let world = self.world;
         let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
         let pipeline_cache = world.resource::<PipelineCache>();
 
-        let (Some(pipeline), Some(view_uniforms), Some(light_occluders)) = (
-            pipeline_cache.get_render_pipeline(prepass_pipelines.sdf_pipeline),
-            world.resource::<ViewUniforms>().uniforms.binding(),
-            world
-                .resource::<Lighing2dViewArrayBuffer<ExtractedLightOccluder2d>>()
-                .get(view_entity),
-        ) else {
+        let Some(pipeline) =
+            pipeline_cache.get_render_pipeline(prepass_pipelines.flood_init_pipeline)
+        else {
             return;
         };
 
-        let (Some(light_occluders), Some(light_occluders_count)) = (
-            light_occluders.data.binding(),
-            light_occluders.count.binding(),
-        ) else {
-            return;
-        };
+        let sampler = ctx
+            .render_device()
+            .create_sampler(&SamplerDescriptor::default());
 
         let bind_group = ctx.render_device().create_bind_group(
-            "sdf_bind_group",
-            &prepass_pipelines.sdf_layout,
-            &BindGroupEntries::sequential((view_uniforms, light_occluders, light_occluders_count)),
+            "flood_init_bind_group",
+            &prepass_pipelines.flood_init_layout,
+            &BindGroupEntries::sequential((input, &sampler)),
         );
 
         let mut pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("sdf_pass"),
+            label: Some("flood_init_pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: &output.default_view,
                 resolve_target: None,
@@ -72,7 +65,64 @@ impl<'w> SdfPass<'w> {
         });
 
         pass.set_render_pipeline(pipeline);
-        pass.set_bind_group(0, &bind_group, &[view_uniform_offset]);
+        pass.set_bind_group(0, &bind_group, &[]);
+        pass.draw(0..3, 0..1);
+    }
+}
+
+pub struct FloodPass<'w> {
+    world: &'w World,
+}
+
+impl<'w> FloodPass<'w> {
+    pub fn new(world: &'w World) -> Self {
+        Self { world }
+    }
+
+    pub fn execute(
+        &mut self,
+        ctx: &mut RenderContext<'_>,
+        input: &CachedTexture,
+        output: &CachedTexture,
+        step: u32,
+    ) {
+        let world = self.world;
+        let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
+        let pipeline_cache = world.resource::<PipelineCache>();
+
+        let mut step = UniformBuffer::from(step);
+
+        step.write_buffer(ctx.render_device(), world.resource::<RenderQueue>());
+
+        let (Some(pipeline), Some(step)) = (
+            pipeline_cache.get_render_pipeline(prepass_pipelines.flood_pipeline),
+            step.binding(),
+        ) else {
+            return;
+        };
+
+        let sampler = ctx
+            .render_device()
+            .create_sampler(&SamplerDescriptor::default());
+
+        let bind_group = ctx.render_device().create_bind_group(
+            "flood_bind_group",
+            &prepass_pipelines.flood_layout,
+            &BindGroupEntries::sequential((&input.default_view, &sampler, step)),
+        );
+
+        let mut pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
+            label: Some("flood_pass"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: &output.default_view,
+                resolve_target: None,
+                ops: Operations::default(),
+            })],
+            ..default()
+        });
+
+        pass.set_render_pipeline(pipeline);
+        pass.set_bind_group(0, &bind_group, &[]);
         pass.draw(0..3, 0..1);
     }
 }

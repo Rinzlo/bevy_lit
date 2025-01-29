@@ -28,7 +28,7 @@ bevy = { version = "0.15", default-features = false, features = [
   "bevy_sprite",
   "x11",
 ] }
-rand = { version = "0.8.5", features = ["small_rng"]}
+rand = { version = "0.9.0", features = ["small_rng"]}
 
 [profile.dev]
 opt-level = 1
@@ -47,3 +47,7 @@ path = "examples/basic.rs"
 [[example]]
 name = "stress_test"
 path = "examples/stress_test.rs"
+
+[[example]]
+name = "mesh_occluders"
+path = "examples/mesh_occluders.rs"
