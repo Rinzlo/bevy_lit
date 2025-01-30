@@ -62,6 +62,8 @@ fn spawn_barrels(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let mut rng = SmallRng::seed_from_u64(0);
+    let mesh = Mesh2d(meshes.add(Circle::new(4.)));
+    let material = MeshMaterial2d(materials.add(Color::from(GRAY_800)));
 
     // spawns 32732 light occluders
     for x in -128..128 {
@@ -71,8 +73,8 @@ fn spawn_barrels(
             }
 
             commands.spawn((
-                Mesh2d(meshes.add(Circle::new(4.))),
-                MeshMaterial2d(materials.add(Color::from(GRAY_800))),
+                mesh.clone(),
+                material.clone(),
                 Transform::from_translation(Vec3::new((x * 16) as f32, (y * 16) as f32, -25.0)),
                 LightOccluder2d,
             ));
@@ -82,7 +84,10 @@ fn spawn_barrels(
 
 fn move_entities(
     mut torch_query: Query<&mut Transform, With<Torch>>,
-    mut camera_query: Query<&mut Transform, (With<Camera>, Without<Torch>)>,
+    mut camera_query: Query<
+        &mut Transform,
+        (With<Camera>, With<Lighting2dSettings>, Without<Torch>),
+    >,
     time: Res<Time>,
 ) {
     let Ok(mut torch_transform) = torch_query.get_single_mut() else {
@@ -91,7 +96,9 @@ fn move_entities(
 
     torch_transform.translation.y += 16.0 * time.delta_secs();
 
-    for mut camera_transform in &mut camera_query {
-        camera_transform.translation.y = torch_transform.translation.y;
-    }
+    let Ok(mut camera_transform) = camera_query.get_single_mut() else {
+        return;
+    };
+
+    camera_transform.translation.y = torch_transform.translation.y;
 }

@@ -7,20 +7,21 @@ use bevy::{
         render_resource::{
             Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         },
-        view::RenderLayers,
+        view::{Layer, RenderLayers},
     },
 };
 
-const SDF_LAYER: usize = 11;
+const FLOOD_LAYER: Layer = 11;
 
 pub struct FloodPlugin;
 
 impl Plugin for FloodPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ExtractComponentPlugin::<FloodMask>::default())
+            .add_systems(Update, (spawn_flood_masks, spawn_flood_elements))
             .add_systems(
-                Update,
-                (spawn_flood_masks, spawn_flood_elements, resize_flood_mask),
+                PostUpdate,
+                update_flood_mask.before(TransformSystem::TransformPropagate),
             );
     }
 }
@@ -29,7 +30,7 @@ impl Plugin for FloodPlugin {
 pub struct FloodCamera;
 
 #[derive(Component, Clone)]
-pub struct DerivedFloodCamera;
+pub struct DerivedFloodCamera(pub Entity);
 
 #[derive(Component, TypePath, ExtractComponent, Clone)]
 pub struct FloodMask {
@@ -47,7 +48,7 @@ fn spawn_flood_masks(
     for (entity, camera, projection, transform) in &cameras {
         let viewport_size = camera
             .logical_viewport_size()
-            .expect("sdf camera should have a size")
+            .expect("flood camera should have a size")
             .as_uvec2();
 
         let size = Extent3d {
@@ -86,24 +87,27 @@ fn spawn_flood_masks(
 
         commands.entity(entity).insert(FloodMask { handle });
         commands.spawn((
-            DerivedFloodCamera,
-            Name::new("SDF Camera"),
+            DerivedFloodCamera(entity),
+            Name::new("flood Camera"),
             Camera2d,
             camera,
             projection.clone(),
-            RenderLayers::layer(SDF_LAYER),
+            RenderLayers::layer(FLOOD_LAYER),
             *transform,
         ));
     }
 }
 
-fn resize_flood_mask(
-    cameras: Query<(&Camera, &FloodMask), (With<FloodCamera>, Changed<Camera>)>,
+fn update_flood_mask(
+    mut commands: Commands,
+    changed_cameras: Query<(&Camera, &FloodMask), (With<FloodCamera>, Changed<Camera>)>,
+    changed_translations: Query<(Entity, &Transform), (With<FloodCamera>, Changed<Transform>)>,
+    derived_cameras: Query<(Entity, &DerivedFloodCamera)>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    for (camera, sdf_mask) in &cameras {
+    for (camera, flood_mask) in &changed_cameras {
         let canvas = images
-            .get_mut(&sdf_mask.handle)
+            .get_mut(&flood_mask.handle)
             .expect("flood camera should handle shouldn't be empty");
 
         let viewport_size = camera
@@ -121,18 +125,27 @@ fn resize_flood_mask(
             ..default()
         });
     }
+
+    for (entity, transform) in &changed_translations {
+        let (derived_camera_entity, _) = derived_cameras
+            .iter()
+            .find(|&(_, camera)| camera.0 == entity)
+            .expect("flood camera should have derived flood camera");
+
+        commands.entity(derived_camera_entity).insert(*transform);
+    }
 }
 
 fn spawn_flood_elements(
     mut commands: Commands,
-    sdf_elements: Query<(Entity, Option<&RenderLayers>), Added<FloodElement>>,
+    flood_elements: Query<(Entity, Option<&RenderLayers>), Added<FloodElement>>,
 ) {
-    for (entity, maybe_render_layer) in &sdf_elements {
+    for (entity, maybe_render_layer) in &flood_elements {
         let main_layer = RenderLayers::layer(0);
         let render_layer = maybe_render_layer.unwrap_or(&main_layer);
 
         commands
             .entity(entity)
-            .insert(render_layer.clone().with(SDF_LAYER));
+            .insert(render_layer.clone().with(FLOOD_LAYER));
     }
 }
