@@ -932,9 +932,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_voronoi"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b7ba6d923234cd7252c1293b6bb3509723b775d621b1ee435bef52dd2033d4b"
+checksum = "615dcf02c48c059463dfa1506785dc51d60d1f19c7e06f9b6c46df7b5841e31d"
 dependencies = [
  "bevy",
 ]
