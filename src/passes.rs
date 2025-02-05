@@ -210,7 +210,7 @@ impl<'w> CompositePass<'w> {
         let mut pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
             label: Some("composite_pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
-                view: &post_process.destination,
+                view: post_process.destination,
                 resolve_target: None,
                 ops: Operations::default(),
             })],
