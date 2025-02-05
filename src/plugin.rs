@@ -118,7 +118,7 @@ fn update_voronoi_material(
     >,
 ) {
     for (occluder, mut material) in &mut query {
-        material.alpha_mask = occluder.alpha_mask.clone()
+        material.alpha_mask = occluder.occluder_mask.clone()
     }
 }
 

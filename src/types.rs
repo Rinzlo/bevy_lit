@@ -97,10 +97,16 @@ impl Default for PointLight2d {
     }
 }
 
-/// A light occluder component. Should be used along side a Mesh2d
+/// A light occluder component. Should be used alongside a Mesh2d
 #[derive(Component, Clone, Debug, Default)]
 #[require(VoronoiMaterial)]
 pub struct LightOccluder2d {
-    /// Any texture can be used as an alpha mask. The occluder will take it's shape
-    pub alpha_mask: Handle<Image>,
+    /// Any texture with a transparent background. The occluder will take it's shape.
+    pub occluder_mask: Handle<Image>,
+}
+
+impl LightOccluder2d {
+    pub fn new(occluder_mask: Handle<Image>) -> Self {
+        Self { occluder_mask }
+    }
 }
