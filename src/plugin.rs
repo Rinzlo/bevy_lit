@@ -5,6 +5,7 @@ use bevy::{
     prelude::*,
     render::{
         extract_component::UniformComponentPlugin,
+        primitives::Aabb,
         render_graph::{RenderGraphApp, ViewNodeRunner},
         render_resource::{
             CachedRenderPipelineId, GpuArrayBufferable, PipelineCache, ShaderType,
@@ -12,7 +13,10 @@ use bevy::{
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::RenderEntity,
-        view::{check_visibility, ExtractedView, RenderVisibleEntities, VisibilitySystems},
+        view::{
+            check_visibility, ExtractedView, NoFrustumCulling, RenderVisibleEntities,
+            VisibilitySystems,
+        },
         Extract, Render, RenderApp, RenderSet,
     },
 };
@@ -26,7 +30,6 @@ use crate::{
     },
     prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
     types::{LightOccluder2d, RaymarchSettings},
-    visibility::check_lighting_2d_artifacts_bounds,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.
@@ -125,6 +128,24 @@ fn remove_voronoi_material(
 ) {
     for entity in removed.read() {
         commands.entity(entity).remove::<VoronoiMaterial>();
+    }
+}
+
+pub fn check_lighting_2d_artifacts_bounds(
+    mut commands: Commands,
+    point_lights: Query<
+        (Entity, &PointLight2d),
+        (
+            Or<(Without<Aabb>, Changed<PointLight2d>)>,
+            Without<NoFrustumCulling>,
+        ),
+    >,
+) {
+    for (entity, point_light) in &point_lights {
+        commands.entity(entity).try_insert(Aabb {
+            center: Vec3::ZERO.into(),
+            half_extents: Vec2::splat(point_light.radius).extend(0.).into(),
+        });
     }
 }
 
