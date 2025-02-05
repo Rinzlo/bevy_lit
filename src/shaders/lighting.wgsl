@@ -44,7 +44,13 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 fn get_distance(pos: vec2<f32>) -> f32 {
     let uv = world_to_uv(vec3(pos, 0.0));
     let flood_uv = textureSampleLevel(flood_texture, flood_sampler, uv, 0.0).xy;
-    return distance(pos, uv_to_world(flood_uv).xy);
+    var dist = distance(pos, uv_to_world(flood_uv).xy);
+    // 0.7 is the treshold I've found to avoid light
+    // leakage if the point light is inside the occluder
+    if dist < 0.7 {
+        dist = 0.0;
+    }
+    return dist;
 }
 
 fn square(x: f32) -> f32 {
@@ -89,9 +95,7 @@ fn raymarch(light: PointLight2d, ray_origin: vec2<f32>) -> f32 {
         let dist = get_distance(ray_origin + ray_progress * ray_direction);
 
         // ray found occluder
-        // 0.7 it's the treshold I've found to avoid
-        // light leakage if it's inside the occluder
-        if dist <= 0.7 {
+        if dist <= 0.0 {
             break;
         }
 
