@@ -1,11 +1,7 @@
 use bevy::{
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
-    ecs::{query::QueryItem, system::lifetimeless::Read},
     prelude::*,
     render::{
-        camera::ExtractedCamera,
-        extract_component::DynamicUniformIndex,
-        render_graph::{NodeRunError, RenderGraphContext, RenderLabel, ViewNode},
         render_resource::{
             binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
             BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, CachedRenderPipelineId,
@@ -13,18 +9,12 @@ use bevy::{
             SamplerBindingType, ShaderStages, SpecializedRenderPipeline, TextureFormat,
             TextureSampleType,
         },
-        renderer::{RenderContext, RenderDevice},
-        view::{ViewTarget, ViewUniform, ViewUniformOffset},
+        renderer::RenderDevice,
+        view::{ViewTarget, ViewUniform},
     },
 };
 
-use bevy_voronoi::prelude::VoronoiTexture;
-
-use crate::{
-    extract::{ExtractedLighting2dSettings, ExtractedPointLight2d},
-    passes::{BlurPass, CompositePass, LightingPass},
-    queue::Lighting2dCompositePipelineId,
-};
+use crate::plugin::{ExtractedLighting2dSettings, ExtractedPointLight2d};
 
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
 pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> = Handle::weak_from_u128(43290875047924);
@@ -180,78 +170,5 @@ impl SpecializedRenderPipeline for Lighting2dCompositePipeline {
             push_constant_ranges: vec![],
             zero_initialize_workgroup_memory: false,
         }
-    }
-}
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
-pub struct LightingLabel;
-
-#[derive(Default)]
-pub struct LightingNode;
-
-impl ViewNode for LightingNode {
-    type ViewQuery = (
-        Read<ViewTarget>,
-        Read<ExtractedCamera>,
-        Read<ViewUniformOffset>,
-        Read<Lighting2dCompositePipelineId>,
-        Read<VoronoiTexture>,
-        Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
-        Read<ExtractedLighting2dSettings>,
-    );
-
-    fn run<'w>(
-        &self,
-        graph: &mut RenderGraphContext,
-        ctx: &mut RenderContext<'w>,
-        (
-            view_target,
-            camera,
-            view_uniform_offset,
-            composite_pipeline_id,
-            voronoi_texture,
-            settings_uniform_index,
-            lighting_settings,
-        ): QueryItem<'w, Self::ViewQuery>,
-        world: &'w World,
-    ) -> Result<(), NodeRunError> {
-        let mut voronoi_texture = voronoi_texture.clone();
-
-        // Lighting
-        let mut lighting_pass = LightingPass::new(world);
-        lighting_pass.execute(
-            ctx,
-            camera,
-            voronoi_texture.input(),
-            voronoi_texture.output(),
-            &graph.view_entity(),
-            view_uniform_offset.offset,
-            settings_uniform_index.index(),
-        );
-        voronoi_texture.flip();
-
-        // Blur
-        if lighting_settings.blur > 0.0 {
-            let mut blur_pass = BlurPass::new(world);
-            blur_pass.execute(
-                ctx,
-                voronoi_texture.input(),
-                voronoi_texture.output(),
-                view_uniform_offset.offset,
-                settings_uniform_index.index(),
-            );
-            voronoi_texture.flip();
-        }
-
-        // Post Process
-        let mut composite_pass = CompositePass::new(world);
-        composite_pass.execute(
-            ctx,
-            voronoi_texture.input(),
-            view_target,
-            composite_pipeline_id.0,
-        );
-
-        Ok(())
     }
 }
