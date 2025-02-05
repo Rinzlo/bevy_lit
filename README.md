@@ -1,8 +1,8 @@
+![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.png)
+
 # `bevy_lit`
 
 `bevy_lit` is a simple and easy-to-use 2D lighting library for Bevy, designed to work seamlessly with a single camera setup. The library provides basic lighting functionalities through the types: `Lighting2dSettings`, `AmbientLight2d`, `LightOccluder2d`, and `PointLight2d`.
-
-![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.png)
 
 ## Features
 
@@ -44,14 +44,14 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.spawn((
         Camera2d,
         Lighting2dSettings::default(),
     ));
 
     commands.spawn(PointLight2d {
-        color: Color::rgb(1.0, 1.0, 1.0),
+        color: Color::WHITE,
         intensity: 3.0,
         radius: 200.0,
         falloff: 2.0,
@@ -59,7 +59,8 @@ fn setup(mut commands: Commands) {
     });
 
     commands.spawn((
-        LightOccluder2d::new(Vec2::splat(50.0)),
+        Mesh2d(meshes.add(Circle::new(50.0))),
+        LightOccluder2d::default()),
         Transform::from_xyz(0.0, 200.0, 0.0)
     ));
 }
