@@ -2,12 +2,12 @@
 
 # `bevy_lit`
 
-`bevy_lit` is a simple 2D lighting library designed for Bevy It provides basic lighting features through:
+A simple 2D lighting library **designed for Bevy**. It provides basic lighting features through the types:
 
-- **Lighting2dSettings**: Controls lighting parameters such as shadow softness
-- **AmbientLight2d**: Provides a general light source that illuminates the entire scene uniformly.
-- **PointLight2d**: Emits light from a specific point, simulating light sources like lamps or torches.
-- **LightOccluder2d**: Creates shadows and blocks light from `PointLight2d` along side any `Mesh2d`.
+- `Lighting2dSettings`: Controls lighting parameters such as shadow softness.
+- `AmbientLight2d`: Provides a general light source that illuminates the entire scene uniformly.
+- `PointLight2d`: Emits light from a specific point, simulating light sources like lamps or torches.
+- `LightOccluder2d`: Creates shadows and blocks light from `PointLight2d` along side any `Mesh2d`.
 
 ## Getting Started
 
@@ -72,7 +72,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 ## Acknowledgement
 
-This library took heavy inspiration from the following crates:
+This library took great inspiration from the following crates:
 
 - [`bevy_light_2d`](https://github.com/jgayfer/bevy_light_2d)
 - [`bevy-magic-light-2d`](https://github.com/zaycev/bevy-magic-light-2d)
