@@ -18,7 +18,7 @@ use bevy::{
     },
 };
 
-use flood_plugin::prelude::VoronoiTexture;
+use bevy_voronoi::prelude::VoronoiTexture;
 
 use crate::{
     extract::{ExtractedLighting2dSettings, ExtractedPointLight2d},

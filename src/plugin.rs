@@ -10,7 +10,7 @@ use bevy::{
         Render, RenderApp, RenderSet,
     },
 };
-use flood_plugin::prelude::{Voronoi2dPlugin, VoronoiMaterial};
+use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiMaterial};
 
 use crate::{
     extract::{

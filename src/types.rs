@@ -4,7 +4,7 @@ use bevy::{
     render::{render_resource::ShaderType, sync_world::SyncToRenderWorld, view::Visibility},
     transform::components::Transform,
 };
-use flood_plugin::prelude::VoronoiMaterial;
+use bevy_voronoi::prelude::VoronoiMaterial;
 
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
@@ -97,8 +97,10 @@ impl Default for PointLight2d {
     }
 }
 
+/// A light occluder component. Should be used along side a Mesh2d
 #[derive(Component, Clone, Debug, Default)]
 #[require(VoronoiMaterial)]
 pub struct LightOccluder2d {
+    /// Any texture can be used as an alpha mask. The occluder will take it's shape
     pub alpha_mask: Handle<Image>,
 }
