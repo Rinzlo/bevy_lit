@@ -127,7 +127,9 @@ fn remove_voronoi_material(
     mut removed: RemovedComponents<LightOccluder2d>,
 ) {
     for entity in removed.read() {
-        commands.entity(entity).remove::<VoronoiMaterial>();
+        if let Some(mut commands) = commands.get_entity(entity) {
+            commands.remove::<VoronoiMaterial>();
+        }
     }
 }
 
