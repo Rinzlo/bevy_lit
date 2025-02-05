@@ -2,15 +2,12 @@
 
 # `bevy_lit`
 
-`bevy_lit` is a simple and easy-to-use 2D lighting library for Bevy, designed to work seamlessly with a single camera setup. The library provides basic lighting functionalities through the types: `Lighting2dSettings`, `AmbientLight2d`, `LightOccluder2d`, and `PointLight2d`.
-
-## Features
+`bevy_lit` is a simple 2D lighting library designed for Bevy It provides basic lighting features through:
 
 - **Lighting2dSettings**: Controls lighting parameters such as shadow softness
 - **AmbientLight2d**: Provides a general light source that illuminates the entire scene uniformly.
 - **PointLight2d**: Emits light from a specific point, simulating light sources like lamps or torches.
-- **LightOccluder2d**: Creates shadows and blocks light from `PointLight2d`.
-- Web support both for **WebGPU**
+- **LightOccluder2d**: Creates shadows and blocks light from `PointLight2d` along side any `Mesh2d`.
 
 ## Getting Started
 
@@ -31,7 +28,7 @@ bevy_lit = "*"
 
 ### Usage
 
-Below is a basic example demonstrating how to set up and use `bevy_lit` in your Bevy project:
+Below is a basic example demonstrating how to set up and use `bevy_lit` in your project:
 
 ```rust
 use bevy::prelude::*;
@@ -66,10 +63,6 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 }
 ```
 
-## Implementation
-
-`bevy_lit` uses signed distance fields (SDFs) to compute the occluders' distances. To soften the shadows, a blur is applied. This approach is not ideal and might have limitations in terms of performance and visual accuracy, but it provides a starting point for basic 2D lighting effects.
-
 ## Compatibility
 
 | bevy   | bevy_lit   |
@@ -79,7 +72,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 ## Acknowledgement
 
-This library took heavy inspiration from the work of other developers. I learned a lot about lighting and Bevy development by reading the source code of the following crates:
+This library took heavy inspiration from the following crates:
 
 - [`bevy_light_2d`](https://github.com/jgayfer/bevy_light_2d)
 - [`bevy-magic-light-2d`](https://github.com/zaycev/bevy-magic-light-2d)
