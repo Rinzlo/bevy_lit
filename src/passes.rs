@@ -1,13 +1,13 @@
 use bevy::{
     prelude::*,
     render::{
+        camera::ExtractedCamera,
         extract_component::ComponentUniforms,
         render_resource::{
             BindGroupEntries, CachedRenderPipelineId, Operations, PipelineCache,
-            RenderPassColorAttachment, RenderPassDescriptor, SamplerDescriptor, TextureView,
-            UniformBuffer,
+            RenderPassColorAttachment, RenderPassDescriptor, SamplerDescriptor,
         },
-        renderer::{RenderContext, RenderQueue},
+        renderer::RenderContext,
         texture::CachedTexture,
         view::{ViewTarget, ViewUniforms},
     },
@@ -18,114 +18,6 @@ use crate::{
     pipeline::{Lighting2dCompositePipeline, Lighting2dPrepassPipelines},
     prepare::Lighing2dViewArrayBuffer,
 };
-
-pub struct FloodInitPass<'w> {
-    world: &'w World,
-}
-
-impl<'w> FloodInitPass<'w> {
-    pub fn new(world: &'w World) -> Self {
-        Self { world }
-    }
-
-    pub fn execute(
-        &mut self,
-        ctx: &mut RenderContext<'_>,
-        input: &TextureView,
-        output: &CachedTexture,
-    ) {
-        let world = self.world;
-        let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
-        let pipeline_cache = world.resource::<PipelineCache>();
-
-        let Some(pipeline) =
-            pipeline_cache.get_render_pipeline(prepass_pipelines.flood_init_pipeline)
-        else {
-            return;
-        };
-
-        let sampler = ctx
-            .render_device()
-            .create_sampler(&SamplerDescriptor::default());
-
-        let bind_group = ctx.render_device().create_bind_group(
-            "flood_init_bind_group",
-            &prepass_pipelines.flood_init_layout,
-            &BindGroupEntries::sequential((input, &sampler)),
-        );
-
-        let mut pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("flood_init_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &output.default_view,
-                resolve_target: None,
-                ops: Operations::default(),
-            })],
-            ..default()
-        });
-
-        pass.set_render_pipeline(pipeline);
-        pass.set_bind_group(0, &bind_group, &[]);
-        pass.draw(0..3, 0..1);
-    }
-}
-
-pub struct FloodPass<'w> {
-    world: &'w World,
-}
-
-impl<'w> FloodPass<'w> {
-    pub fn new(world: &'w World) -> Self {
-        Self { world }
-    }
-
-    pub fn execute(
-        &mut self,
-        ctx: &mut RenderContext<'_>,
-        input: &CachedTexture,
-        output: &CachedTexture,
-        step: u32,
-    ) {
-        let world = self.world;
-        let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
-        let pipeline_cache = world.resource::<PipelineCache>();
-
-        let mut step = UniformBuffer::from(step);
-
-        step.write_buffer(ctx.render_device(), world.resource::<RenderQueue>());
-
-        let (Some(pipeline), Some(step)) = (
-            pipeline_cache.get_render_pipeline(prepass_pipelines.flood_pipeline),
-            step.binding(),
-        ) else {
-            return;
-        };
-
-        let sampler = ctx
-            .render_device()
-            .create_sampler(&SamplerDescriptor::default());
-
-        let bind_group = ctx.render_device().create_bind_group(
-            "flood_bind_group",
-            &prepass_pipelines.flood_layout,
-            &BindGroupEntries::sequential((&input.default_view, &sampler, step)),
-        );
-
-        let mut pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("flood_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &output.default_view,
-                resolve_target: None,
-                ops: Operations::default(),
-            })],
-            ..default()
-        });
-
-        pass.set_render_pipeline(pipeline);
-        pass.set_bind_group(0, &bind_group, &[]);
-        pass.draw(0..3, 0..1);
-    }
-}
 
 pub struct LightingPass<'w> {
     world: &'w World,
@@ -139,6 +31,7 @@ impl<'w> LightingPass<'w> {
     pub fn execute(
         &mut self,
         ctx: &mut RenderContext<'_>,
+        camera: &ExtractedCamera,
         input: &CachedTexture,
         output: &CachedTexture,
         view_entity: &Entity,
@@ -200,6 +93,10 @@ impl<'w> LightingPass<'w> {
             })],
             ..default()
         });
+
+        if let Some(viewport) = camera.viewport.as_ref() {
+            pass.set_camera_viewport(viewport);
+        }
 
         pass.set_render_pipeline(pipeline);
         pass.set_bind_group(

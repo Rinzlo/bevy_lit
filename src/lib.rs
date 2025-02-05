@@ -1,5 +1,4 @@
 mod extract;
-mod flood;
 mod passes;
 mod pipeline;
 mod plugin;
@@ -9,6 +8,6 @@ mod types;
 mod visibility;
 
 pub mod prelude {
-    pub use crate::plugin::*;
+    pub use crate::plugin::Lighting2dPlugin;
     pub use crate::types::*;
 }

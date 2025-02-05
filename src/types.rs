@@ -1,13 +1,10 @@
-#![expect(deprecated)]
-
 use bevy::{
     prelude::*,
     reflect::Reflect,
     render::{render_resource::ShaderType, sync_world::SyncToRenderWorld, view::Visibility},
     transform::components::Transform,
 };
-
-use crate::flood::{FloodCamera, FloodElement};
+use flood_plugin::prelude::VoronoiMaterial;
 
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
@@ -52,7 +49,7 @@ impl Default for RaymarchSettings {
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
 #[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, AmbientLight2d, FloodCamera)]
+#[require(SyncToRenderWorld, AmbientLight2d)]
 pub struct Lighting2dSettings {
     /// The blur coc (circle of confusion) dimension contributing to the softness of the shadows
     pub blur: f32,
@@ -100,18 +97,8 @@ impl Default for PointLight2d {
     }
 }
 
-/// A bundle of components representing a point light in a 2D environment.
-#[deprecated(since = "0.4.0", note = "Use the `PointLight2d` component instead.")]
-#[derive(Bundle, Default)]
-pub struct PointLight2dBundle {
-    /// The point light component.
-    pub point_light: PointLight2d,
-    /// The transform component.
-    pub transform: Transform,
-    /// The visibility component.
-    pub visibility: Visibility,
-}
-
 #[derive(Component, Clone, Debug, Default)]
-#[require(FloodElement)]
-pub struct LightOccluder2d;
+#[require(VoronoiMaterial)]
+pub struct LightOccluder2d {
+    pub alpha_mask: Handle<Image>,
+}

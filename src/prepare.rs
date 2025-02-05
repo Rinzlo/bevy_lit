@@ -2,92 +2,13 @@ use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
     prelude::*,
     render::{
-        render_resource::{
-            GpuArrayBufferable, StorageBuffer, TextureDescriptor, TextureDimension, TextureFormat,
-            TextureUsages, UniformBuffer,
-        },
+        render_resource::{GpuArrayBufferable, StorageBuffer, UniformBuffer},
         renderer::{RenderDevice, RenderQueue},
-        texture::{CachedTexture, TextureCache},
-        view::{RenderVisibleEntities, ViewTarget},
+        view::RenderVisibleEntities,
     },
 };
 
 use crate::extract::ExtractedLighting2dSettings;
-
-fn create_aux_texture(
-    view_target: &ViewTarget,
-    texture_cache: &mut TextureCache,
-    render_device: &RenderDevice,
-    label: &'static str,
-) -> CachedTexture {
-    texture_cache.get(
-        render_device,
-        TextureDescriptor {
-            label: Some(label),
-            size: view_target.main_texture().size(),
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba16Float,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        },
-    )
-}
-
-#[derive(Clone, Component)]
-pub struct Lighting2dTextures {
-    flip: bool,
-    texture_a: CachedTexture,
-    texture_b: CachedTexture,
-}
-
-impl Lighting2dTextures {
-    pub fn input(&self) -> &CachedTexture {
-        if self.flip {
-            &self.texture_b
-        } else {
-            &self.texture_a
-        }
-    }
-
-    pub fn output(&self) -> &CachedTexture {
-        if self.flip {
-            &self.texture_a
-        } else {
-            &self.texture_b
-        }
-    }
-
-    pub fn flip(&mut self) {
-        self.flip = !self.flip;
-    }
-}
-
-pub fn prepare_lighting_auxiliary_textures(
-    mut commands: Commands,
-    render_device: Res<RenderDevice>,
-    mut texture_cache: ResMut<TextureCache>,
-    view_targets: Query<(Entity, &ViewTarget), With<ExtractedLighting2dSettings>>,
-) {
-    for (entity, view_target) in &view_targets {
-        commands.entity(entity).insert(Lighting2dTextures {
-            flip: false,
-            texture_a: create_aux_texture(
-                view_target,
-                &mut texture_cache,
-                &render_device,
-                "lighting2d_texture_a",
-            ),
-            texture_b: create_aux_texture(
-                view_target,
-                &mut texture_cache,
-                &render_device,
-                "lighting2d_texture_b",
-            ),
-        });
-    }
-}
 
 #[derive(Deref, DerefMut)]
 pub struct Lighting2dArrayBuffer<T: GpuArrayBufferable> {

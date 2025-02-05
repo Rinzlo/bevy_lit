@@ -3,8 +3,8 @@ use bevy::{
     ecs::{query::QueryItem, system::lifetimeless::Read},
     prelude::*,
     render::{
+        camera::ExtractedCamera,
         extract_component::DynamicUniformIndex,
-        render_asset::RenderAssets,
         render_graph::{NodeRunError, RenderGraphContext, RenderLabel, ViewNode},
         render_resource::{
             binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
@@ -14,23 +14,20 @@ use bevy::{
             TextureSampleType,
         },
         renderer::{RenderContext, RenderDevice},
-        texture::GpuImage,
         view::{ViewTarget, ViewUniform, ViewUniformOffset},
     },
 };
 
+use flood_plugin::prelude::VoronoiTexture;
+
 use crate::{
     extract::{ExtractedLighting2dSettings, ExtractedPointLight2d},
-    flood::FloodMask,
-    passes::{BlurPass, CompositePass, FloodInitPass, FloodPass, LightingPass},
-    prepare::Lighting2dTextures,
+    passes::{BlurPass, CompositePass, LightingPass},
     queue::Lighting2dCompositePipelineId,
 };
 
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
 pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> = Handle::weak_from_u128(43290875047924);
-pub const FLOOD_INIT_SHADER: Handle<Shader> = Handle::weak_from_u128(32132157492758);
-pub const FLOOD_SHADER: Handle<Shader> = Handle::weak_from_u128(57492774892945);
 pub const LIGHTING_SHADER: Handle<Shader> = Handle::weak_from_u128(47320975447604);
 pub const BLUR_SHADER: Handle<Shader> = Handle::weak_from_u128(43806754295913);
 pub const COMPOSITE_SHADER: Handle<Shader> = Handle::weak_from_u128(57420546547174);
@@ -73,10 +70,6 @@ fn create_pipeline(
 
 #[derive(Resource)]
 pub struct Lighting2dPrepassPipelines {
-    pub flood_init_layout: BindGroupLayout,
-    pub flood_init_pipeline: CachedRenderPipelineId,
-    pub flood_layout: BindGroupLayout,
-    pub flood_pipeline: CachedRenderPipelineId,
     pub lighting_layout: BindGroupLayout,
     pub lighting_pipeline: CachedRenderPipelineId,
     pub blur_layout: BindGroupLayout,
@@ -87,35 +80,6 @@ impl FromWorld for Lighting2dPrepassPipelines {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
-
-        let (flood_init_layout, flood_init_pipeline) = create_pipeline(
-            render_device,
-            pipeline_cache,
-            "flood_init",
-            FLOOD_INIT_SHADER,
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                ),
-            ),
-        );
-
-        let (flood_layout, flood_pipeline) = create_pipeline(
-            render_device,
-            pipeline_cache,
-            "flood",
-            FLOOD_SHADER,
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                    uniform_buffer::<u32>(false),
-                ),
-            ),
-        );
 
         let (lighting_layout, lighting_pipeline) = create_pipeline(
             render_device,
@@ -152,10 +116,6 @@ impl FromWorld for Lighting2dPrepassPipelines {
         );
 
         Self {
-            flood_init_layout,
-            flood_init_pipeline,
-            flood_layout,
-            flood_pipeline,
             lighting_layout,
             lighting_pipeline,
             blur_layout,
@@ -232,10 +192,10 @@ pub struct LightingNode;
 impl ViewNode for LightingNode {
     type ViewQuery = (
         Read<ViewTarget>,
+        Read<ExtractedCamera>,
         Read<ViewUniformOffset>,
         Read<Lighting2dCompositePipelineId>,
-        Read<FloodMask>,
-        Read<Lighting2dTextures>,
+        Read<VoronoiTexture>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
         Read<ExtractedLighting2dSettings>,
     );
@@ -246,74 +206,48 @@ impl ViewNode for LightingNode {
         ctx: &mut RenderContext<'w>,
         (
             view_target,
+            camera,
             view_uniform_offset,
             composite_pipeline_id,
-            sdf_mask_bind_group,
-            flood_textures,
+            voronoi_texture,
             settings_uniform_index,
             lighting_settings,
         ): QueryItem<'w, Self::ViewQuery>,
         world: &'w World,
     ) -> Result<(), NodeRunError> {
-        let Some(mask) = world
-            .resource::<RenderAssets<GpuImage>>()
-            .get(&sdf_mask_bind_group.handle)
-        else {
-            return Ok(());
-        };
-
-        let mut flood_textures = flood_textures.clone();
-
-        // Flood init
-        let mut flood_init_pass = FloodInitPass::new(world);
-        flood_init_pass.execute(ctx, &mask.texture_view, flood_textures.output());
-        flood_textures.flip();
-
-        // Flood
-        let mut flood_pass = FloodPass::new(world);
-
-        let mut step = view_target
-            .main_texture()
-            .width()
-            .max(view_target.main_texture().height())
-            / 2;
-
-        while step >= 1 {
-            flood_pass.execute(ctx, flood_textures.input(), flood_textures.output(), step);
-            flood_textures.flip();
-            step /= 2; // Halve the step size
-        }
+        let mut voronoi_texture = voronoi_texture.clone();
 
         // Lighting
         let mut lighting_pass = LightingPass::new(world);
         lighting_pass.execute(
             ctx,
-            flood_textures.input(),
-            flood_textures.output(),
+            camera,
+            voronoi_texture.input(),
+            voronoi_texture.output(),
             &graph.view_entity(),
             view_uniform_offset.offset,
             settings_uniform_index.index(),
         );
-        flood_textures.flip();
+        voronoi_texture.flip();
 
         // Blur
         if lighting_settings.blur > 0.0 {
             let mut blur_pass = BlurPass::new(world);
             blur_pass.execute(
                 ctx,
-                flood_textures.input(),
-                flood_textures.output(),
+                voronoi_texture.input(),
+                voronoi_texture.output(),
                 view_uniform_offset.offset,
                 settings_uniform_index.index(),
             );
-            flood_textures.flip();
+            voronoi_texture.flip();
         }
 
         // Post Process
         let mut composite_pass = CompositePass::new(world);
         composite_pass.execute(
             ctx,
-            flood_textures.input(),
+            voronoi_texture.input(),
             view_target,
             composite_pipeline_id.0,
         );

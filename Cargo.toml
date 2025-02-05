@@ -18,6 +18,7 @@ bevy = { version = "0.15", default-features = false, features = [
   "x11",
   "png", # TODO: Remove when bevyengine/bevy#16568 is solved
 ] }
+flood_plugin = { path = "../flood_plugin" }
 
 [dev-dependencies]
 bevy = { version = "0.15", default-features = false, features = [
@@ -47,7 +48,3 @@ path = "examples/basic.rs"
 [[example]]
 name = "stress_test"
 path = "examples/stress_test.rs"
-
-[[example]]
-name = "mesh_occluders"
-path = "examples/mesh_occluders.rs"

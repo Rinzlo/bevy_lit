@@ -26,9 +26,9 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         let dist = distance(light.center, pos);
 
         if dist < light.radius {
-            var raymarch_contrib = 1.;
+            var raymarch_contrib = 1.0;
 
-            if light.shadows_enabled == 1 {
+            if bool(light.shadows_enabled) {
                 raymarch_contrib = raymarch(light, pos);
             }
 
@@ -43,15 +43,8 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
 fn get_distance(pos: vec2<f32>) -> f32 {
     let uv = world_to_uv(vec3(pos, 0.0));
-    let flood_uv = textureSample(flood_texture, flood_sampler, uv).xy;
-    var dist = distance(pos, uv_to_world(flood_uv).xy);
-
-    // TODO: Find why I need this threshold
-    if dist <= 0.7 {
-        dist = 0.;
-    }
-
-    return dist;
+    let flood_uv = textureSampleLevel(flood_texture, flood_sampler, uv, 0.0).xy;
+    return distance(pos, uv_to_world(flood_uv).xy);
 }
 
 fn square(x: f32) -> f32 {
@@ -84,7 +77,7 @@ fn raymarch(light: PointLight2d, ray_origin: vec2<f32>) -> f32 {
 
     for (var i = 0u; i < max_steps; i++) {
         // ray found target
-        if (ray_progress > stop_at) {
+        if ray_progress > stop_at {
             // 1.0 next to the light and 0.0 at light.radius away
             let fade_ratio = 1.0 - clamp(stop_at / light.radius, 0.0, 1.0);
             // fade off quadratically instead of linearly
@@ -96,7 +89,9 @@ fn raymarch(light: PointLight2d, ray_origin: vec2<f32>) -> f32 {
         let dist = get_distance(ray_origin + ray_progress * ray_direction);
 
         // ray found occluder
-        if dist <= 0.0 {
+        // 0.7 it's the treshold I've found to avoid
+        // light leakage if it's inside the occluder
+        if dist <= 0.7 {
             break;
         }
 

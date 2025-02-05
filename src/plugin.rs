@@ -6,28 +6,25 @@ use bevy::{
         extract_component::UniformComponentPlugin,
         render_graph::{RenderGraphApp, ViewNodeRunner},
         render_resource::SpecializedRenderPipelines,
-        view::{check_visibility, prepare_view_targets, VisibilitySystems},
+        view::{check_visibility, VisibilitySystems},
         Render, RenderApp, RenderSet,
     },
 };
+use flood_plugin::prelude::{Voronoi2dPlugin, VoronoiMaterial};
 
 use crate::{
     extract::{
         extract_lighting_settings, extract_point_lights, ExtractedLighting2dSettings,
         ExtractedPointLight2d,
     },
-    flood::FloodPlugin,
     pipeline::{
         Lighting2dCompositePipeline, Lighting2dPrepassPipelines, LightingLabel, LightingNode,
-        BLUR_SHADER, COMPOSITE_SHADER, FLOOD_INIT_SHADER, FLOOD_SHADER, LIGHTING_SHADER,
-        TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
+        BLUR_SHADER, COMPOSITE_SHADER, LIGHTING_SHADER, TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
-    prepare::{
-        prepare_lighting2d_view_array_buffers, prepare_lighting_auxiliary_textures,
-        Lighing2dViewArrayBuffer,
-    },
+    prepare::{prepare_lighting2d_view_array_buffers, Lighing2dViewArrayBuffer},
     queue::queue_composite_pipelines,
+    types::LightOccluder2d,
     visibility::check_lighting_2d_artifacts_bounds,
 };
 
@@ -49,13 +46,6 @@ impl Plugin for Lighting2dPlugin {
         );
         load_internal_asset!(
             app,
-            FLOOD_INIT_SHADER,
-            "shaders/flood_init.wgsl",
-            Shader::from_wgsl
-        );
-        load_internal_asset!(app, FLOOD_SHADER, "shaders/flood.wgsl", Shader::from_wgsl);
-        load_internal_asset!(
-            app,
             LIGHTING_SHADER,
             "shaders/lighting.wgsl",
             Shader::from_wgsl
@@ -70,11 +60,12 @@ impl Plugin for Lighting2dPlugin {
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
-            FloodPlugin,
+            Voronoi2dPlugin,
         ))
         .register_type::<AmbientLight2d>()
         .register_type::<PointLight2d>()
         .register_type::<Lighting2dSettings>()
+        .add_systems(Update, (update_voronoi_material, remove_voronoi_material))
         .add_systems(
             PostUpdate,
             (
@@ -96,9 +87,6 @@ impl Plugin for Lighting2dPlugin {
             .add_systems(
                 Render,
                 (
-                    prepare_lighting_auxiliary_textures
-                        .after(prepare_view_targets)
-                        .in_set(RenderSet::ManageViews),
                     queue_composite_pipelines.in_set(RenderSet::Queue),
                     prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>
                         .in_set(RenderSet::PrepareResources),
@@ -117,5 +105,25 @@ impl Plugin for Lighting2dPlugin {
             .insert_resource(Lighing2dViewArrayBuffer::<ExtractedPointLight2d>::default())
             .init_resource::<Lighting2dPrepassPipelines>()
             .init_resource::<Lighting2dCompositePipeline>();
+    }
+}
+
+fn update_voronoi_material(
+    mut query: Query<
+        (&LightOccluder2d, &mut VoronoiMaterial),
+        Or<(Added<LightOccluder2d>, Changed<LightOccluder2d>)>,
+    >,
+) {
+    for (occluder, mut material) in &mut query {
+        material.alpha_mask = occluder.alpha_mask.clone()
+    }
+}
+
+fn remove_voronoi_material(
+    mut commands: Commands,
+    mut removed: RemovedComponents<LightOccluder2d>,
+) {
+    for entity in removed.read() {
+        commands.entity(entity).remove::<VoronoiMaterial>();
     }
 }
