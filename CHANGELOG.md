@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.6.0 - Mesh and Texture Occluders 🎉
+
+### Features
+
+- New `LightOccluder2D` implementation allows any `Mesh2D` or **texture** to be used as an occluder ⚡️
+- Better performance! The SDF rendering system has been completely rewritten using Bevy's `Mesh2d` implementation and the **Jump Flood** algorithm
+- Adds `tint_occluder` to `LightingSettings2d` that determines whether light occlusion areas should be tinted by the ambient light
+
+### Breaking
+
+- Removed `PointLight2dBundle` and `LightOccluder2dBundle`
+
+### Migration
+
+The basic gist is that now `LightOccluder2d` works like a material for `Mesh2d`.
+
+```rust
+commands.spawn((Mesh2d(..), LightOccluder2d::default()));
+```
+
+You can also pass a `occluder_mask` to the occluder (any image with a transparent background). The alpha channel will be used to determine wether the pixel should be occluded or not:
+
+```rust
+commands.spawn((
+    Mesh2d(mesh_handle),
+    LightOccluder2d::new(image_handle),
+));
+```
+
+Note that the same image used for rendering can also be used as the occlusion mask:
+
+
+```rust
+commands.spawn((
+    Sprite { image: image_handle.clone(), ..default() },
+    Mesh2d(mesh_handle),
+    LightOccluder2d::new(image_handle),
+));
+```
+
 ## 0.5.0
 
 ### Features

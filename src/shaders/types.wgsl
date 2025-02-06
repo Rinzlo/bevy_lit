@@ -10,6 +10,7 @@ struct Lighting2dSettings {
     // blur circle of confusion diameter
     coc: f32,
     fixed_resolution: u32,
+    tint_occluders: u32,
     ambient_light: vec4<f32>,
     raymarch: RaymarchSettings,
 }

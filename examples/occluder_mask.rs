@@ -1,8 +1,6 @@
-use bevy::{
-    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_900, YELLOW_600},
-    prelude::*,
-    window::PrimaryWindow,
-};
+use bevy::color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, YELLOW_600};
+use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy_lit::prelude::*;
 
 fn main() {
@@ -23,11 +21,7 @@ struct MovingLights;
 
 const X_EXTENT: f32 = 700.;
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-) {
+fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<AssetServer>) {
     commands.spawn((
         Camera2d,
         Lighting2dSettings {
@@ -45,38 +39,16 @@ fn setup(
         },
     ));
 
-    let shapes = [
-        meshes.add(Circle::new(50.0)),
-        meshes.add(Annulus::new(25.0, 50.0)),
-        meshes.add(Capsule2d::new(25.0, 50.0)),
-        meshes.add(Rhombus::new(75.0, 100.0)),
-        meshes.add(Rectangle::new(50.0, 100.0)),
-        meshes.add(RegularPolygon::new(50.0, 6)),
-        meshes.add(Triangle2d::new(
-            Vec2::Y * 50.0,
-            Vec2::new(-50.0, -50.0),
-            Vec2::new(50.0, -50.0),
-        )),
-    ];
+    let lettering_handle = assets.load("abc.png");
 
-    let num_shapes = shapes.len();
-
-    for (i, shape) in shapes.into_iter().enumerate() {
-        // Distribute colors evenly across the rainbow.
-        let color = Color::from(GRAY_900);
-
-        commands.spawn((
-            Mesh2d(shape),
-            MeshMaterial2d(materials.add(color)),
-            LightOccluder2d::default(),
-            Transform::from_xyz(
-                // Distribute shapes from -X_EXTENT/2 to +X_EXTENT/2.
-                -X_EXTENT / 2. + i as f32 / (num_shapes - 1) as f32 * X_EXTENT,
-                0.0,
-                0.0,
-            ),
-        ));
-    }
+    commands.spawn((
+        Mesh2d(meshes.add(Rectangle::new(411., 200.))),
+        Sprite {
+            image: lettering_handle.clone(),
+            ..default()
+        },
+        LightOccluder2d::new(lettering_handle),
+    ));
 
     commands
         .spawn((MovingLights, Transform::default(), Visibility::default()))

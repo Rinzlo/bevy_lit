@@ -67,6 +67,7 @@ impl Plugin for Lighting2dPlugin {
         ))
         .register_type::<AmbientLight2d>()
         .register_type::<PointLight2d>()
+        .register_type::<LightOccluder2d>()
         .register_type::<Lighting2dSettings>()
         .add_systems(Update, (update_voronoi_material, remove_voronoi_material))
         .add_systems(
@@ -155,6 +156,7 @@ pub fn check_lighting_2d_artifacts_bounds(
 pub struct ExtractedLighting2dSettings {
     pub blur: f32,
     pub fixed_resolution: u32,
+    pub tint_occluders: u32,
     pub ambient_light: LinearRgba,
     pub raymarch: RaymarchSettings,
 }
@@ -175,6 +177,7 @@ fn extract_lighting_settings(
                     fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
                     ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
                     raymarch: settings.raymarch.clone(),
+                    tint_occluders: if settings.tint_occluders { 1 } else { 0 },
                 },
             )
         })

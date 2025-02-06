@@ -1,6 +1,6 @@
 [package]
 name = "bevy_lit"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 categories = ["graphics", "game-development", "game-engines", "rendering"]
 description = "A lighting 2d library for Bevy"
@@ -47,3 +47,7 @@ path = "examples/basic.rs"
 [[example]]
 name = "stress_test"
 path = "examples/stress_test.rs"
+
+[[example]]
+name = "occluder_mask" 
+path = "examples/occluder_mask.rs"

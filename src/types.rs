@@ -57,6 +57,8 @@ pub struct Lighting2dSettings {
     pub fixed_resolution: bool,
     /// Raymarch settings
     pub raymarch: RaymarchSettings,
+    /// whether light occlusion areas should be tinted by the ambient light
+    pub tint_occluders: bool,
 }
 
 impl Default for Lighting2dSettings {
@@ -65,6 +67,7 @@ impl Default for Lighting2dSettings {
             blur: 0.0,
             fixed_resolution: true,
             raymarch: Default::default(),
+            tint_occluders: true,
         }
     }
 }
@@ -98,7 +101,7 @@ impl Default for PointLight2d {
 }
 
 /// A light occluder component. Should be used alongside a Mesh2d
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Reflect)]
 #[require(VoronoiMaterial)]
 pub struct LightOccluder2d {
     /// Any texture with a transparent background. The occluder will take it's shape.
