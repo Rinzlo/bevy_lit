@@ -47,3 +47,7 @@ path = "examples/basic.rs"
 [[example]]
 name = "stress_test"
 path = "examples/stress_test.rs"
+
+[[example]]
+name = "occluder_mask" 
+path = "examples/occluder_mask.rs"
