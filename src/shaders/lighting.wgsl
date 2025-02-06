@@ -17,6 +17,10 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     var lighting_color = vec4(settings.ambient_light.rgb, 1.0);
 
     if get_distance(pos) <= 0.0 {
+        if !bool(settings.tint_occluders) {
+            return vec4(1.);
+        }
+
         return lighting_color;
     }
 

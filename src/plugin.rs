@@ -156,6 +156,7 @@ pub fn check_lighting_2d_artifacts_bounds(
 pub struct ExtractedLighting2dSettings {
     pub blur: f32,
     pub fixed_resolution: u32,
+    pub tint_occluders: u32,
     pub ambient_light: LinearRgba,
     pub raymarch: RaymarchSettings,
 }
@@ -176,6 +177,7 @@ fn extract_lighting_settings(
                     fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
                     ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
                     raymarch: settings.raymarch.clone(),
+                    tint_occluders: if settings.tint_occluders { 1 } else { 0 },
                 },
             )
         })
