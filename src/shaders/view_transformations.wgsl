@@ -36,3 +36,15 @@ fn position_world_to_ndc(world_pos: vec3<f32>) -> vec3<f32> {
 fn ndc_to_uv(ndc: vec2<f32>) -> vec2<f32> {
     return ndc * vec2(0.5, -0.5) + vec2(0.5);
 }
+
+fn frag_to_world(frag_coord: vec4<f32>) -> vec3<f32> {
+    return position_ndc_to_world(frag_coord_to_ndc(frag_coord));
+}
+
+fn uv_to_world(uv: vec2<f32>) -> vec3<f32> {
+    return position_ndc_to_world(vec3(uv_to_ndc(uv), 0.0));
+}
+
+fn world_to_uv(world_pos: vec3<f32>) -> vec2<f32> {
+    return ndc_to_uv(position_world_to_ndc(world_pos).xy);
+}

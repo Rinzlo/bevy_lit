@@ -16,8 +16,8 @@ bevy = { version = "0.15", default-features = false, features = [
   "bevy_core_pipeline",
   "bevy_winit",
   "x11",
-  "png", # TODO: Remove when bevyengine/bevy#16568 is solved
 ] }
+bevy_voronoi = "0.1.2"
 
 [dev-dependencies]
 bevy = { version = "0.15", default-features = false, features = [
@@ -28,7 +28,7 @@ bevy = { version = "0.15", default-features = false, features = [
   "bevy_sprite",
   "x11",
 ] }
-rand = { version = "0.8.5", features = ["small_rng"]}
+rand = { version = "0.9.0" }
 
 [profile.dev]
 opt-level = 1

@@ -1,23 +1,18 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
     types::{Lighting2dSettings, PointLight2d},
-    view_transformations::{
-        frag_coord_to_ndc,
-        position_ndc_to_world,
-        position_world_to_ndc,
-        ndc_to_uv,
-    }
+    view_transformations::{frag_to_world, world_to_uv, uv_to_world}
 }
 
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
 @group(0) @binding(2) var<storage> lights: array<PointLight2d>;
 @group(0) @binding(3) var<uniform> lights_count: u32;
-@group(0) @binding(4) var sdf: texture_2d<f32>;
-@group(0) @binding(5) var sdf_sampler: sampler;
+@group(0) @binding(4) var flood_texture: texture_2d<f32>;
+@group(0) @binding(5) var flood_sampler: sampler;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let pos = position_ndc_to_world(frag_coord_to_ndc(in.position)).xy;
+    let pos = frag_to_world(in.position).xy;
 
     var lighting_color = vec4(settings.ambient_light.rgb, 1.0);
 
@@ -31,9 +26,9 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         let dist = distance(light.center, pos);
 
         if dist < light.radius {
-            var raymarch_contrib = 1.;
+            var raymarch_contrib = 1.0;
 
-            if light.shadows_enabled == 1 {
+            if bool(light.shadows_enabled) {
                 raymarch_contrib = raymarch(light, pos);
             }
 
@@ -47,8 +42,14 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 }
 
 fn get_distance(pos: vec2<f32>) -> f32 {
-    let uv = ndc_to_uv(position_world_to_ndc(vec3(pos, 0.0)).xy);
-    let dist = textureSampleLevel(sdf, sdf_sampler, uv, 0.0).r;
+    let uv = world_to_uv(vec3(pos, 0.0));
+    let flood_uv = textureSampleLevel(flood_texture, flood_sampler, uv, 0.0).xy;
+    var dist = distance(pos, uv_to_world(flood_uv).xy);
+    // 0.7 is the treshold I've found to avoid light
+    // leakage if the point light is inside the occluder
+    if dist < 0.7 {
+        dist = 0.0;
+    }
     return dist;
 }
 
@@ -82,7 +83,7 @@ fn raymarch(light: PointLight2d, ray_origin: vec2<f32>) -> f32 {
 
     for (var i = 0u; i < max_steps; i++) {
         // ray found target
-        if (ray_progress > stop_at) {
+        if ray_progress > stop_at {
             // 1.0 next to the light and 0.0 at light.radius away
             let fade_ratio = 1.0 - clamp(stop_at / light.radius, 0.0, 1.0);
             // fade off quadratically instead of linearly

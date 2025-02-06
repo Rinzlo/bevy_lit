@@ -1,40 +1,41 @@
 use bevy::{
     asset::load_internal_asset,
     core_pipeline::core_2d::graph::{Core2d, Node2d},
+    ecs::entity::{EntityHashMap, EntityHashSet},
     prelude::*,
     render::{
         extract_component::UniformComponentPlugin,
+        primitives::Aabb,
         render_graph::{RenderGraphApp, ViewNodeRunner},
-        render_resource::SpecializedRenderPipelines,
-        view::{check_visibility, prepare_view_targets, VisibilitySystems},
-        Render, RenderApp, RenderSet,
+        render_resource::{
+            CachedRenderPipelineId, GpuArrayBufferable, PipelineCache, ShaderType,
+            SpecializedRenderPipelines, StorageBuffer, UniformBuffer,
+        },
+        renderer::{RenderDevice, RenderQueue},
+        sync_world::RenderEntity,
+        view::{
+            check_visibility, ExtractedView, NoFrustumCulling, RenderVisibleEntities,
+            VisibilitySystems,
+        },
+        Extract, Render, RenderApp, RenderSet,
     },
 };
+use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiMaterial};
 
 use crate::{
-    extract::{
-        extract_light_occluders, extract_lighting_settings, extract_point_lights,
-        ExtractedLightOccluder2d, ExtractedLighting2dSettings, ExtractedPointLight2d,
-    },
+    node::{LightingLabel, LightingNode},
     pipeline::{
-        Lighting2dPrepassPipelines, LightingLabel, LightingNode, PostProcessPipeline, BLUR_SHADER,
-        LIGHTING_SHADER, POST_PROCESS_SHADER, SDF_SHADER, TYPES_SHADER,
-        VIEW_TRANSFORMATIONS_SHADER,
+        Lighting2dCompositePipeline, Lighting2dPipelineKey, Lighting2dPrepassPipelines,
+        BLUR_SHADER, COMPOSITE_SHADER, LIGHTING_SHADER, TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
     },
-    prelude::{AmbientLight2d, LightOccluder2d, Lighting2dSettings, PointLight2d},
-    prepare::{
-        prepare_lighting2d_view_array_buffers, prepare_lighting_auxiliary_textures,
-        prepare_lighting_bind_groups, Lighing2dViewArrayBuffer,
-    },
-    queue::queue_post_process_pipelines,
-    visibility::check_lighting_2d_artifacts_bounds,
+    prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
+    types::{LightOccluder2d, RaymarchSettings},
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.
 ///
 /// This plugin sets up and configures the necessary components and systems for 2D lighting,
 /// including [`AmbientLight2d`], [`Lighting2dSettings`], [`PointLight2d`], and [`LightOccluder2d`].
-#[derive(Default)]
 pub struct Lighting2dPlugin;
 
 impl Plugin for Lighting2dPlugin {
@@ -46,7 +47,6 @@ impl Plugin for Lighting2dPlugin {
             "shaders/view_transformations.wgsl",
             Shader::from_wgsl
         );
-        load_internal_asset!(app, SDF_SHADER, "shaders/sdf.wgsl", Shader::from_wgsl);
         load_internal_asset!(
             app,
             LIGHTING_SHADER,
@@ -56,58 +56,43 @@ impl Plugin for Lighting2dPlugin {
         load_internal_asset!(app, BLUR_SHADER, "shaders/blur.wgsl", Shader::from_wgsl);
         load_internal_asset!(
             app,
-            POST_PROCESS_SHADER,
-            "shaders/post_process.wgsl",
+            COMPOSITE_SHADER,
+            "shaders/composite.wgsl",
             Shader::from_wgsl
         );
 
-        app.add_plugins(UniformComponentPlugin::<ExtractedLighting2dSettings>::default())
-            .register_type::<AmbientLight2d>()
-            .register_type::<PointLight2d>()
-            .register_type::<LightOccluder2d>()
-            .register_type::<Lighting2dSettings>()
-            .add_systems(
-                PostUpdate,
-                (
-                    check_lighting_2d_artifacts_bounds.in_set(VisibilitySystems::CalculateBounds),
-                    (
-                        check_visibility::<With<PointLight2d>>,
-                        check_visibility::<With<LightOccluder2d>>,
-                    )
-                        .in_set(VisibilitySystems::CheckVisibility),
-                ),
-            );
+        app.add_plugins((
+            UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
+            Voronoi2dPlugin,
+        ))
+        .register_type::<AmbientLight2d>()
+        .register_type::<PointLight2d>()
+        .register_type::<Lighting2dSettings>()
+        .add_systems(Update, (update_voronoi_material, remove_voronoi_material))
+        .add_systems(
+            PostUpdate,
+            (
+                check_lighting_2d_artifacts_bounds.in_set(VisibilitySystems::CalculateBounds),
+                check_visibility::<With<PointLight2d>>.in_set(VisibilitySystems::CheckVisibility),
+            ),
+        );
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
         };
 
         render_app
-            .init_resource::<SpecializedRenderPipelines<PostProcessPipeline>>()
+            .init_resource::<SpecializedRenderPipelines<Lighting2dCompositePipeline>>()
             .add_systems(
                 ExtractSchedule,
-                (
-                    extract_lighting_settings,
-                    extract_light_occluders,
-                    extract_point_lights,
-                ),
+                (extract_lighting_settings, extract_point_lights),
             )
             .add_systems(
                 Render,
                 (
-                    prepare_lighting_auxiliary_textures
-                        .after(prepare_view_targets)
-                        .in_set(RenderSet::ManageViews),
-                    queue_post_process_pipelines.in_set(RenderSet::Queue),
-                    (
-                    prepare_lighting2d_view_array_buffers::<
-                        ExtractedLightOccluder2d,
-                        LightOccluder2d,
-                    >,
-                    prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>,
-                )
-                    .in_set(RenderSet::PrepareResources),
-                    prepare_lighting_bind_groups.in_set(RenderSet::PrepareBindGroups),
+                    prepare_composite_pipelines.in_set(RenderSet::Prepare),
+                    prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>
+                        .in_set(RenderSet::PrepareResources),
                 ),
             )
             .add_render_graph_node::<ViewNodeRunner<LightingNode>>(Core2d, LightingLabel)
@@ -120,9 +105,202 @@ impl Plugin for Lighting2dPlugin {
         };
 
         render_app
-            .insert_resource(Lighing2dViewArrayBuffer::<ExtractedLightOccluder2d>::default())
             .insert_resource(Lighing2dViewArrayBuffer::<ExtractedPointLight2d>::default())
             .init_resource::<Lighting2dPrepassPipelines>()
-            .init_resource::<PostProcessPipeline>();
+            .init_resource::<Lighting2dCompositePipeline>();
+    }
+}
+
+fn update_voronoi_material(
+    mut query: Query<
+        (&LightOccluder2d, &mut VoronoiMaterial),
+        Or<(Added<LightOccluder2d>, Changed<LightOccluder2d>)>,
+    >,
+) {
+    for (occluder, mut material) in &mut query {
+        material.alpha_mask = occluder.occluder_mask.clone()
+    }
+}
+
+fn remove_voronoi_material(
+    mut commands: Commands,
+    mut removed: RemovedComponents<LightOccluder2d>,
+) {
+    for entity in removed.read() {
+        if let Some(mut commands) = commands.get_entity(entity) {
+            commands.remove::<VoronoiMaterial>();
+        }
+    }
+}
+
+pub fn check_lighting_2d_artifacts_bounds(
+    mut commands: Commands,
+    point_lights: Query<
+        (Entity, &PointLight2d),
+        (
+            Or<(Without<Aabb>, Changed<PointLight2d>)>,
+            Without<NoFrustumCulling>,
+        ),
+    >,
+) {
+    for (entity, point_light) in &point_lights {
+        commands.entity(entity).try_insert(Aabb {
+            center: Vec3::ZERO.into(),
+            half_extents: Vec2::splat(point_light.radius).extend(0.).into(),
+        });
+    }
+}
+
+#[derive(Component, Clone, ShaderType)]
+pub struct ExtractedLighting2dSettings {
+    pub blur: f32,
+    pub fixed_resolution: u32,
+    pub ambient_light: LinearRgba,
+    pub raymarch: RaymarchSettings,
+}
+
+fn extract_lighting_settings(
+    mut commands: Commands,
+    ambient_light_query: Extract<
+        Query<(RenderEntity, &Lighting2dSettings, &AmbientLight2d), With<Camera2d>>,
+    >,
+) {
+    let values = ambient_light_query
+        .iter()
+        .map(|(e, settings, ambient_light)| {
+            (
+                e,
+                ExtractedLighting2dSettings {
+                    blur: settings.blur,
+                    fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
+                    ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
+                    raymarch: settings.raymarch.clone(),
+                },
+            )
+        })
+        .collect::<Vec<_>>();
+
+    commands.insert_or_spawn_batch(values);
+}
+
+#[derive(Component, Default, Clone, ShaderType)]
+pub struct ExtractedPointLight2d {
+    pub center: Vec2,
+    pub color: LinearRgba,
+    pub falloff: f32,
+    pub intensity: f32,
+    pub radius: f32,
+    pub shadows_enabled: u32,
+}
+
+fn extract_point_lights(
+    mut commands: Commands,
+    point_lights_query: Extract<
+        Query<(
+            RenderEntity,
+            &PointLight2d,
+            &GlobalTransform,
+            &ViewVisibility,
+        )>,
+    >,
+) {
+    for (render_entity, point_light, transform, visibility) in point_lights_query.iter() {
+        if !visibility.get() {
+            continue;
+        }
+
+        commands
+            .entity(render_entity)
+            .insert(ExtractedPointLight2d {
+                color: point_light.color.to_linear(),
+                center: transform.translation().xy(),
+                radius: point_light.radius,
+                intensity: point_light.intensity,
+                falloff: point_light.falloff,
+                shadows_enabled: if point_light.shadows_enabled { 1 } else { 0 },
+            });
+    }
+}
+
+#[derive(Component)]
+pub struct Lighting2dCompositePipelineId(pub CachedRenderPipelineId);
+
+fn prepare_composite_pipelines(
+    mut commands: Commands,
+    pipeline_cache: Res<PipelineCache>,
+    mut composite_pipelines: ResMut<SpecializedRenderPipelines<Lighting2dCompositePipeline>>,
+    composite_pipeline: Res<Lighting2dCompositePipeline>,
+    views_query: Query<(Entity, &ExtractedView), With<ExtractedLighting2dSettings>>,
+) {
+    for (entity, view) in &views_query {
+        commands
+            .entity(entity)
+            .insert(Lighting2dCompositePipelineId(
+                composite_pipelines.specialize(
+                    &pipeline_cache,
+                    &composite_pipeline,
+                    Lighting2dPipelineKey { hdr: view.hdr },
+                ),
+            ));
+    }
+}
+
+#[derive(Deref, DerefMut)]
+pub struct Lighting2dArrayBuffer<T: GpuArrayBufferable> {
+    #[deref]
+    pub data: StorageBuffer<Vec<T>>,
+    pub count: UniformBuffer<u32>,
+}
+
+impl<T: GpuArrayBufferable> Lighting2dArrayBuffer<T> {
+    pub fn new(data: Vec<T>, count: u32) -> Self {
+        Self {
+            data: StorageBuffer::from(data),
+            count: UniformBuffer::from(count),
+        }
+    }
+
+    pub fn write(&mut self, device: &RenderDevice, queue: &RenderQueue) {
+        self.data.write_buffer(device, queue);
+        self.count.write_buffer(device, queue);
+    }
+}
+
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct Lighing2dViewArrayBuffer<T: GpuArrayBufferable>(
+    pub EntityHashMap<Lighting2dArrayBuffer<T>>,
+);
+
+fn prepare_lighting2d_view_array_buffers<T: Component + GpuArrayBufferable, U: Component>(
+    mut view_entities: Local<EntityHashSet>,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
+    mut view_array_buffer: ResMut<Lighing2dViewArrayBuffer<T>>,
+    view_query: Query<(Entity, &RenderVisibleEntities), With<ExtractedLighting2dSettings>>,
+    components: Query<(Entity, &T)>,
+) {
+    for (view_entity, visible_entities) in &view_query {
+        view_entities.clear();
+
+        for (e, _) in visible_entities.iter::<With<U>>() {
+            view_entities.insert(*e);
+        }
+
+        view_array_buffer.insert(
+            view_entity,
+            Lighting2dArrayBuffer::<T>::new(
+                components
+                    .iter()
+                    .filter(|(entity, _)| view_entities.contains(entity))
+                    .map(|(_, component)| component.clone())
+                    .collect(),
+                view_entities.len() as u32,
+            ),
+        );
+
+        view_array_buffer
+            .get_mut(&view_entity)
+            .unwrap()
+            .write(&render_device, &render_queue);
     }
 }

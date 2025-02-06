@@ -1,12 +1,10 @@
-#![expect(deprecated)]
-
 use bevy::{
-    math::Vec2,
     prelude::*,
     reflect::Reflect,
     render::{render_resource::ShaderType, sync_world::SyncToRenderWorld, view::Visibility},
     transform::components::Transform,
 };
+use bevy_voronoi::prelude::VoronoiMaterial;
 
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
@@ -99,40 +97,16 @@ impl Default for PointLight2d {
     }
 }
 
-/// A bundle of components representing a point light in a 2D environment.
-#[deprecated(since = "0.4.0", note = "Use the `PointLight2d` component instead.")]
-#[derive(Bundle, Default)]
-pub struct PointLight2dBundle {
-    /// The point light component.
-    pub point_light: PointLight2d,
-    /// The transform component.
-    pub transform: Transform,
-    /// The visibility component.
-    pub visibility: Visibility,
-}
-
-/// Represents an occluder that blocks light in a 2D environment.
-#[derive(Component, Default, Clone, Reflect)]
-#[require(SyncToRenderWorld, Transform, Visibility)]
+/// A light occluder component. Should be used alongside a Mesh2d
+#[derive(Component, Clone, Debug, Default)]
+#[require(VoronoiMaterial)]
 pub struct LightOccluder2d {
-    /// Half the size of the occluder AABB rectangle.
-    pub half_size: Vec2,
+    /// Any texture with a transparent background. The occluder will take it's shape.
+    pub occluder_mask: Handle<Image>,
 }
 
 impl LightOccluder2d {
-    pub fn new(half_size: Vec2) -> Self {
-        Self { half_size }
+    pub fn new(occluder_mask: Handle<Image>) -> Self {
+        Self { occluder_mask }
     }
-}
-
-/// A bundle of components representing a light occluder in a 2D environment.
-#[deprecated(since = "0.4.0", note = "Use the `LightOccluder2d` component instead.")]
-#[derive(Bundle, Default)]
-pub struct LightOccluder2dBundle {
-    /// The light occluder component.
-    pub light_occluder: LightOccluder2d,
-    /// The transform component.
-    pub transform: Transform,
-    /// The visibility component.
-    pub visibility: Visibility,
 }
