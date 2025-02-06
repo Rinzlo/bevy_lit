@@ -76,6 +76,7 @@ This library took great inspiration from the following crates:
 
 - [`bevy_light_2d`](https://github.com/jgayfer/bevy_light_2d)
 - [`bevy-magic-light-2d`](https://github.com/zaycev/bevy-magic-light-2d)
+- [`bevy_mod_outline`](https://github.com/komadori/bevy_mod_outline)
 
 ## Contributing
 
