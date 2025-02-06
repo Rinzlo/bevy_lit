@@ -65,7 +65,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 ## Compatibility
 
-| bevy   | bevy_lit   |
+| `bevy` | `bevy_lit` |
 | ------ | ---------- |
 | `0.15` | `0.4..0.6` |
 | `0.14` | `0.3`      |
