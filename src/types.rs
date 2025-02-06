@@ -98,7 +98,7 @@ impl Default for PointLight2d {
 }
 
 /// A light occluder component. Should be used alongside a Mesh2d
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Reflect)]
 #[require(VoronoiMaterial)]
 pub struct LightOccluder2d {
     /// Any texture with a transparent background. The occluder will take it's shape.

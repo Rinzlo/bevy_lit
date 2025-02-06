@@ -67,6 +67,7 @@ impl Plugin for Lighting2dPlugin {
         ))
         .register_type::<AmbientLight2d>()
         .register_type::<PointLight2d>()
+        .register_type::<LightOccluder2d>()
         .register_type::<Lighting2dSettings>()
         .add_systems(Update, (update_voronoi_material, remove_voronoi_material))
         .add_systems(
