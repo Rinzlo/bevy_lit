@@ -1,4 +1,4 @@
-![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.png)
+![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.webp)
 
 # `bevy_lit`
 
@@ -67,7 +67,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 | bevy   | bevy_lit   |
 | ------ | ---------- |
-| `0.15` | `0.4..0.5` |
+| `0.15` | `0.4..0.6` |
 | `0.14` | `0.3`      |
 
 ## Acknowledgement

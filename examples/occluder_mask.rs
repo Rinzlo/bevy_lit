@@ -38,7 +38,8 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
             color: Color::from(BLUE_300),
         },
     ));
-    let lettering_handle = assets.load("ABC.png");
+
+    let lettering_handle = assets.load("abc.png");
 
     commands.spawn((
         Mesh2d(meshes.add(Rectangle::new(411., 200.))),
