@@ -1,6 +1,8 @@
-use bevy::color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_900, YELLOW_600};
-use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
+use bevy::{
+    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_900, YELLOW_600},
+    prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_lit::prelude::*;
 
 fn main() {
@@ -56,6 +58,7 @@ fn setup(
             Vec2::new(50.0, -50.0),
         )),
     ];
+
     let num_shapes = shapes.len();
 
     for (i, shape) in shapes.into_iter().enumerate() {
