@@ -1,4 +1,4 @@
-![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.png)
+![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.webp)
 
 # `bevy_lit`
 
