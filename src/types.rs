@@ -57,7 +57,7 @@ pub struct Lighting2dSettings {
     pub fixed_resolution: bool,
     /// Raymarch settings
     pub raymarch: RaymarchSettings,
-    /// wether light occlusion areas should be tinted by the ambient light
+    /// whether light occlusion areas should be tinted by the ambient light
     pub tint_occluders: bool,
 }
 

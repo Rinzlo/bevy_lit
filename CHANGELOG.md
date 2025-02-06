@@ -6,6 +6,7 @@
 
 - New `LightOccluder2D` implementation allows any `Mesh2D` or **texture** to be used as an occluder ⚡️
 - Better performance! The SDF rendering system has been completely rewritten using Bevy's `Mesh2d` implementation and the **Jump Flood** algorithm
+- Adds `tint_occluder` to `LightingSettings2d` that determines whether light occlusion areas should be tinted by the ambient light
 
 ### Breaking
 
