@@ -72,7 +72,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 ## Acknowledgement
 
-This library took great inspiration from the following crates:
+This library author took great inspiration from the following crates:
 
 - [`bevy_light_2d`](https://github.com/jgayfer/bevy_light_2d)
 - [`bevy-magic-light-2d`](https://github.com/zaycev/bevy-magic-light-2d)
