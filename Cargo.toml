@@ -11,23 +11,11 @@ readme = "README.md"
 exclude = ["static/*"]
 
 [dependencies]
-bevy = { version = "0.15", default-features = false, features = [
-  "bevy_render",
-  "bevy_core_pipeline",
-  "bevy_winit",
-  "x11",
-] }
-bevy_voronoi = "0.1.2"
+bevy = { version = "0.15", default-features = false, features = [ "bevy_core_pipeline", "bevy_winit", "png" ] }
+bevy_voronoi = "0.2.0" 
 
 [dev-dependencies]
-bevy = { version = "0.15", default-features = false, features = [
-  "bevy_window",
-  "bevy_render",
-  "bevy_core_pipeline",
-  "bevy_winit",
-  "bevy_sprite",
-  "x11",
-] }
+bevy = "0.15"
 rand = { version = "0.9.0" }
 
 [profile.dev]
@@ -49,5 +37,5 @@ name = "stress_test"
 path = "examples/stress_test.rs"
 
 [[example]]
-name = "occluder_mask" 
+name = "occluder_mask"
 path = "examples/occluder_mask.rs"
