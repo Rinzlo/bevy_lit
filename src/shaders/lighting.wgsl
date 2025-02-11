@@ -1,7 +1,7 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
     types::{Lighting2dSettings, PointLight2d},
-    view_transformations::{frag_to_world, world_to_uv, uv_to_world}
+    view_transformations::{frag_to_world, world_to_uv}
 }
 
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
@@ -12,33 +12,41 @@
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
+    let penetration = 7.5;
     let pos = frag_to_world(in.position).xy;
+    let signed_dist = get_distance(pos);
+    let within_occluder = signed_dist <= 0.0;
 
     var lighting_color = vec4(settings.ambient_light.rgb, 1.0);
 
-    if get_distance(pos) <= 0.0 {
-        if !bool(settings.tint_occluders) {
-            return vec4(1.);
-        }
-
-        return lighting_color;
+    if within_occluder && !bool(settings.tint_occluders) {
+        return vec4(1.);
     }
 
     for (var i = 0u; i < lights_count; i++) {
         let light = lights[i];
+        let light_dist = distance(pos, light.center);
 
-        let dist = distance(light.center, pos);
-
-        if dist < light.radius {
-            var raymarch_contrib = 1.0;
+        if light_dist < light.radius {
+            var light_contrib = vec4(light.color.rgb, 1.0) * attenuation(light, light_dist);
 
             if bool(light.shadows_enabled) {
-                raymarch_contrib = raymarch(light, pos);
+                if !within_occluder {
+                    light_contrib *= raymarch(pos, light.center);
+                }
             }
 
-            lighting_color += vec4(light.color.rgb, 1.0) *
-                attenuation(light, dist) *
-                raymarch_contrib;
+            if within_occluder {
+                // - penetration should happen just on the side of the occluder that receives light
+                // - it should penetrate `penetration` amount
+
+                let normalized_dist = -signed_dist / penetration;
+                let penetration_contrib = smoothstep(1.0, 0.0, normalized_dist);
+
+                light_contrib *= penetration_contrib;
+            }
+
+            lighting_color += light_contrib;
         }
     }
 
@@ -50,13 +58,9 @@ fn get_distance(pos: vec2<f32>) -> f32 {
     let seed = textureSampleLevel(flood_texture, flood_sampler, uv, 0.0);
     var dist = length(pos - frag_to_world(seed).xy);
     // Determine if the pixel is inside or outside the shape
-    let is_inside = seed.z == 1.;
+    let is_inside = seed.z == 1.0;
     // Signed distance: negative if inside, positive if outside
     return select(dist, -dist, is_inside);
-}
-
-fn square(x: f32) -> f32 {
-    return x * x;
 }
 
 // Attribution: https://lisyarus.github.io/blog/posts/point-light-attenuation.html
@@ -65,20 +69,20 @@ fn attenuation(light: PointLight2d, dist: f32) -> f32 {
     if s > 1.0 {
         return 0.0;
     }
-    let s2 = square(s);
-    return light.intensity * square(1 - s2) / (1 + light.falloff * s2);
+    let s2 = pow(s, 2.0);
+    return light.intensity * pow(1.0 - s2, 2.0) / (1.0 + light.falloff * s2);
 }
 
-// Implementation follows the demo of this article with some enhancements
+// Implementation follows the demo in this article 
 // https://www.rykap.com/2020/09/23/distance-fields
-fn raymarch(light: PointLight2d, ray_origin: vec2<f32>) -> f32 {
+fn raymarch(ray_origin: vec2<f32>, ray_target: vec2<f32>) -> f32 {
     let config = settings.raymarch;
     let max_steps = config.max_steps;
     let sharpness = config.sharpness;
     let jitter = config.jitter;
 
-    let ray_direction = normalize(light.center - ray_origin);
-    let stop_at = distance(ray_origin, light.center);
+    let ray_direction = normalize(ray_target - ray_origin);
+    let stop_at = distance(ray_origin, ray_target);
 
     var ray_progress = 0.0;
     var light_contrib = 1.0;
@@ -86,12 +90,7 @@ fn raymarch(light: PointLight2d, ray_origin: vec2<f32>) -> f32 {
     for (var i = 0u; i < max_steps; i++) {
         // ray found target
         if ray_progress > stop_at {
-            // 1.0 next to the light and 0.0 at light.radius away
-            let fade_ratio = 1.0 - clamp(stop_at / light.radius, 0.0, 1.0);
-            // fade off quadratically instead of linearly
-            let distance_factor = pow(fade_ratio, 2.0);
-
-            return light_contrib * distance_factor;
+            return light_contrib;
         }
 
         let dist = get_distance(ray_origin + ray_progress * ray_direction);
