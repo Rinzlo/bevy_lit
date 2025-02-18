@@ -19,6 +19,7 @@ use crate::plugin::{ExtractedLighting2dSettings, ExtractedPointLight2d};
 pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
 pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> = Handle::weak_from_u128(43290875047924);
 pub const LIGHTING_SHADER: Handle<Shader> = Handle::weak_from_u128(47320975447604);
+pub const PENETRATION_SHADER: Handle<Shader> = Handle::weak_from_u128(34390154260533);
 pub const BLUR_SHADER: Handle<Shader> = Handle::weak_from_u128(43806754295913);
 pub const COMPOSITE_SHADER: Handle<Shader> = Handle::weak_from_u128(57420546547174);
 
@@ -62,6 +63,8 @@ fn create_pipeline(
 pub struct Lighting2dPrepassPipelines {
     pub lighting_layout: BindGroupLayout,
     pub lighting_pipeline: CachedRenderPipelineId,
+    pub penetration_layout: BindGroupLayout,
+    pub penetration_pipeline: CachedRenderPipelineId,
     pub blur_layout: BindGroupLayout,
     pub blur_pipeline: CachedRenderPipelineId,
 }
@@ -89,6 +92,21 @@ impl FromWorld for Lighting2dPrepassPipelines {
             ),
         );
 
+        let (penetration_layout, penetration_pipeline) = create_pipeline(
+            render_device,
+            pipeline_cache,
+            "penetration",
+            PENETRATION_SHADER,
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    uniform_buffer::<ViewUniform>(true),
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
+                ),
+            ),
+        );
+
         let (blur_layout, blur_pipeline) = create_pipeline(
             render_device,
             pipeline_cache,
@@ -108,6 +126,8 @@ impl FromWorld for Lighting2dPrepassPipelines {
         Self {
             lighting_layout,
             lighting_pipeline,
+            penetration_layout,
+            penetration_pipeline,
             blur_layout,
             blur_pipeline,
         }

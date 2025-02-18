@@ -13,8 +13,9 @@ use bevy::{
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::RenderEntity,
+        texture::{CachedTexture, TextureCache},
         view::{
-            check_visibility, ExtractedView, NoFrustumCulling, RenderVisibleEntities,
+            check_visibility, ExtractedView, NoFrustumCulling, RenderVisibleEntities, ViewTarget,
             VisibilitySystems,
         },
         Extract, Render, RenderApp, RenderSet,
@@ -26,10 +27,12 @@ use crate::{
     node::{LightingLabel, LightingNode},
     pipeline::{
         Lighting2dCompositePipeline, Lighting2dPipelineKey, Lighting2dPrepassPipelines,
-        BLUR_SHADER, COMPOSITE_SHADER, LIGHTING_SHADER, TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
+        BLUR_SHADER, COMPOSITE_SHADER, LIGHTING_SHADER, PENETRATION_SHADER, TYPES_SHADER,
+        VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
     types::{LightOccluder2d, RaymarchSettings},
+    util::create_aux_texture,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.
@@ -51,6 +54,12 @@ impl Plugin for Lighting2dPlugin {
             app,
             LIGHTING_SHADER,
             "shaders/lighting.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            PENETRATION_SHADER,
+            "shaders/penetration.wgsl",
             Shader::from_wgsl
         );
         load_internal_asset!(app, BLUR_SHADER, "shaders/blur.wgsl", Shader::from_wgsl);
@@ -91,7 +100,8 @@ impl Plugin for Lighting2dPlugin {
             .add_systems(
                 Render,
                 (
-                    prepare_composite_pipelines.in_set(RenderSet::Prepare),
+                    (prepare_lighting2d_textures, prepare_composite_pipelines)
+                        .in_set(RenderSet::Prepare),
                     prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>
                         .in_set(RenderSet::PrepareResources),
                 ),
@@ -222,6 +232,60 @@ fn extract_point_lights(
                 falloff: point_light.falloff,
                 shadows_enabled: if point_light.shadows_enabled { 1 } else { 0 },
             });
+    }
+}
+
+#[derive(Clone, Component)]
+pub struct Lighting2dTexture {
+    flip: bool,
+    texture_a: CachedTexture,
+    texture_b: CachedTexture,
+}
+
+impl Lighting2dTexture {
+    pub fn input(&self) -> &CachedTexture {
+        if self.flip {
+            &self.texture_b
+        } else {
+            &self.texture_a
+        }
+    }
+
+    pub fn output(&self) -> &CachedTexture {
+        if self.flip {
+            &self.texture_a
+        } else {
+            &self.texture_b
+        }
+    }
+
+    pub fn flip(&mut self) {
+        self.flip = !self.flip;
+    }
+}
+
+fn prepare_lighting2d_textures(
+    mut commands: Commands,
+    view_query: Query<(Entity, &ViewTarget), With<ExtractedLighting2dSettings>>,
+    render_device: Res<RenderDevice>,
+    mut texture_cache: ResMut<TextureCache>,
+) {
+    for (entity, view_target) in &view_query {
+        commands.entity(entity).insert(Lighting2dTexture {
+            flip: false,
+            texture_a: create_aux_texture(
+                view_target,
+                &mut texture_cache,
+                &render_device,
+                "lighting2d_texture_a",
+            ),
+            texture_b: create_aux_texture(
+                view_target,
+                &mut texture_cache,
+                &render_device,
+                "lighting2d_texture_b",
+            ),
+        });
     }
 }
 

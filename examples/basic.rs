@@ -1,5 +1,5 @@
 use bevy::{
-    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_900, YELLOW_600},
+    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_700, YELLOW_600},
     prelude::*,
     window::PrimaryWindow,
 };
@@ -63,7 +63,7 @@ fn setup(
 
     for (i, shape) in shapes.into_iter().enumerate() {
         // Distribute colors evenly across the rainbow.
-        let color = Color::from(GRAY_900);
+        let color = Color::from(GRAY_700);
 
         commands.spawn((
             Mesh2d(shape),

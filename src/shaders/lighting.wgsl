@@ -12,45 +12,32 @@
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let penetration = 7.5;
     let pos = frag_to_world(in.position).xy;
-    let signed_dist = get_distance(pos);
-    let within_occluder = signed_dist <= 0.0;
+    let sdf = get_distance(pos);
 
-    var lighting_color = vec4(settings.ambient_light.rgb, 1.0);
-
-    if within_occluder && !bool(settings.tint_occluders) {
-        return vec4(1.);
-    }
+    var lighting_color = settings.ambient_light.rgb;
 
     for (var i = 0u; i < lights_count; i++) {
         let light = lights[i];
         let light_dist = distance(pos, light.center);
 
         if light_dist < light.radius {
-            var light_contrib = vec4(light.color.rgb, 1.0) * attenuation(light, light_dist);
+            var light_contrib = light.color.rgb * attenuation(light, light_dist);
 
-            if bool(light.shadows_enabled) {
-                if !within_occluder {
+            // inside occluder
+            if sdf <= 0.0 {
+                light_contrib *= select(1.0, 0.0, bool(settings.tint_occluders));
+            } else {
+                if bool(light.shadows_enabled) {
                     light_contrib *= raymarch(pos, light.center);
                 }
-            }
-
-            if within_occluder {
-                // - penetration should happen just on the side of the occluder that receives light
-                // - it should penetrate `penetration` amount
-
-                let normalized_dist = -signed_dist / penetration;
-                let penetration_contrib = smoothstep(1.0, 0.0, normalized_dist);
-
-                light_contrib *= penetration_contrib;
             }
 
             lighting_color += light_contrib;
         }
     }
 
-    return lighting_color;
+    return vec4(lighting_color, sdf);
 }
 
 fn get_distance(pos: vec2<f32>) -> f32 {
@@ -58,7 +45,7 @@ fn get_distance(pos: vec2<f32>) -> f32 {
     let seed = textureSampleLevel(flood_texture, flood_sampler, uv, 0.0);
     var dist = length(pos - frag_to_world(seed).xy);
     // Determine if the pixel is inside or outside the shape
-    let is_inside = seed.z == 1.0;
+    let is_inside = seed.z >= 0.0;
     // Signed distance: negative if inside, positive if outside
     return select(dist, -dist, is_inside);
 }
@@ -101,7 +88,6 @@ fn raymarch(ray_origin: vec2<f32>, ray_target: vec2<f32>) -> f32 {
         }
 
         light_contrib = min(light_contrib, dist / ray_progress * sharpness);
-
         ray_progress += dist * (1.0 - jitter) + jitter * fract(dist * 43758.5453);
     }
 

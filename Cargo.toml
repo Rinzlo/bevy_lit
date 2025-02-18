@@ -12,7 +12,7 @@ exclude = ["static/*"]
 
 [dependencies]
 bevy = { version = "0.15", default-features = false, features = [ "bevy_core_pipeline", "bevy_winit", "png" ] }
-bevy_voronoi = "0.2.0" 
+bevy_voronoi = { path = "../voronoi_plugin/" }
 
 [dev-dependencies]
 bevy = "0.15"
@@ -39,3 +39,7 @@ path = "examples/stress_test.rs"
 [[example]]
 name = "occluder_mask"
 path = "examples/occluder_mask.rs"
+
+[[example]]
+name = "penetration"
+path = "examples/penetration.rs"
