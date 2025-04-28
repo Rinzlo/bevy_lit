@@ -102,14 +102,18 @@ fn run_penetration_pass<'w>(
     camera: &ExtractedCamera,
     input: &CachedTexture,
     output: &CachedTexture,
+    view_entity: &Entity,
     view_uniform_offset: u32,
 ) {
     let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
     let pipeline_cache = world.resource::<PipelineCache>();
 
-    let (Some(pipeline), Some(view_uniforms)) = (
+    let (Some(pipeline), Some(view_uniforms), Some(point_lights)) = (
         pipeline_cache.get_render_pipeline(prepass_pipelines.penetration_pipeline),
         world.resource::<ViewUniforms>().uniforms.binding(),
+        world
+            .resource::<Lighing2dViewArrayBuffer<ExtractedPointLight2d>>()
+            .get(view_entity),
     ) else {
         return;
     };
@@ -121,7 +125,13 @@ fn run_penetration_pass<'w>(
     let bind_group = render_context.render_device().create_bind_group(
         "penetration_bind_group",
         &prepass_pipelines.penetration_layout,
-        &BindGroupEntries::sequential((view_uniforms, &input.default_view, &sampler)),
+        &BindGroupEntries::sequential((
+            view_uniforms,
+            &input.default_view,
+            &sampler,
+            point_lights.data.binding().unwrap(),
+            point_lights.count.binding().unwrap(),
+        )),
     );
 
     let mut pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
@@ -290,6 +300,7 @@ impl ViewNode for LightingNode {
             camera,
             lighting_texture.input(),
             lighting_texture.output(),
+            &graph.view_entity(),
             view_uniform_offset.offset,
         );
         lighting_texture.flip();

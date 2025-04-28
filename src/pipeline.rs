@@ -103,6 +103,8 @@ impl FromWorld for Lighting2dPrepassPipelines {
                     uniform_buffer::<ViewUniform>(true),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
+                    storage_buffer_read_only::<ExtractedPointLight2d>(false),
+                    uniform_buffer::<u32>(false),
                 ),
             ),
         );

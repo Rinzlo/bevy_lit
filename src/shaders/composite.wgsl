@@ -8,5 +8,8 @@
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let light_frag = textureSample(lighting_texture, texture_sampler, in.uv);
     let scene_frag = textureSample(view_texture, texture_sampler, in.uv);
-    return scene_frag * light_frag;
+
+    let ambient_light = vec4(vec3(0.2), 1.0);
+
+    return scene_frag * (light_frag + ambient_light);
 }

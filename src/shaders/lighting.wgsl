@@ -15,7 +15,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let pos = frag_to_world(in.position).xy;
     let sdf = get_distance(pos);
 
-    var lighting_color = settings.ambient_light.rgb;
+    var lighting_color = vec3(0.0);
 
     for (var i = 0u; i < lights_count; i++) {
         let light = lights[i];
@@ -37,6 +37,11 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         }
     }
 
+    if sdf > 0.0 {
+        let edge_intensity = 1.0 / abs(sdf) * 2.0;
+        lighting_color += lighting_color * edge_intensity;
+    }
+
     return vec4(lighting_color, sdf);
 }
 
@@ -45,7 +50,7 @@ fn get_distance(pos: vec2<f32>) -> f32 {
     let seed = textureSampleLevel(flood_texture, flood_sampler, uv, 0.0);
     var dist = length(pos - frag_to_world(seed).xy);
     // Determine if the pixel is inside or outside the shape
-    let is_inside = seed.z >= 0.0;
+    let is_inside = seed.z == 1.0;
     // Signed distance: negative if inside, positive if outside
     return select(dist, -dist, is_inside);
 }
