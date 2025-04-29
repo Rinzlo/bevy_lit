@@ -17,8 +17,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
     let penetration_max = 5.0;
     let penetration_intensity = 1.0;
-    let penetration_falloff = 0.5;  // Higher values give sharper falloff
-    // let penetration_falloff = 1.8;  // Higher values give sharper falloff
+    let penetration_falloff = 2.0;  // Higher values give sharper falloff
 
     // Early exit for areas outside the penetration range
     if sdf > 0.0 || sdf < -penetration_max {
@@ -45,7 +44,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
         // Original penetration detection logic
         var should_tint = false;
-        for (var d = 1; d <= i32(penetration_max); d += 1) {
+        for (var d = 0; d <= i32(penetration_max); d++) {
             let offset = light_dir * f32(d);
             let uv = world_to_uv(vec3(pos + offset, 0.0));
             let sample = textureSampleLevel(lighting_texture, lighting_sampler, uv, 0.0).rgb;

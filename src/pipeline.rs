@@ -149,6 +149,7 @@ impl FromWorld for Lighting2dCompositePipeline {
                 &BindGroupLayoutEntries::sequential(
                     ShaderStages::FRAGMENT,
                     (
+                        uniform_buffer::<ExtractedLighting2dSettings>(true),
                         texture_2d(TextureSampleType::Float { filterable: true }),
                         texture_2d(TextureSampleType::Float { filterable: true }),
                         sampler(SamplerBindingType::Filtering),

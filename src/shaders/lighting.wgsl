@@ -38,7 +38,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     }
 
     if sdf > 0.0 {
-        let edge_intensity = 1.0 / abs(sdf) * 2.0;
+        let edge_intensity = 1.0 / sdf * 0.0001;
         lighting_color += lighting_color * edge_intensity;
     }
 
@@ -65,7 +65,7 @@ fn attenuation(light: PointLight2d, dist: f32) -> f32 {
     return light.intensity * pow(1.0 - s2, 2.0) / (1.0 + light.falloff * s2);
 }
 
-// Implementation follows the demo in this article 
+// Implementation follows the demo in this article
 // https://www.rykap.com/2020/09/23/distance-fields
 fn raymarch(ray_origin: vec2<f32>, ray_target: vec2<f32>) -> f32 {
     let config = settings.raymarch;

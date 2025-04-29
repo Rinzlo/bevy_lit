@@ -214,10 +214,16 @@ pub fn run_composite_pass<'w>(
     input: &CachedTexture,
     view_target: &ViewTarget,
     pipeline_id: CachedRenderPipelineId,
+    settings_uniform_offset: u32,
 ) {
     let pipeline_cache = world.resource::<PipelineCache>();
 
-    let Some(pipeline) = pipeline_cache.get_render_pipeline(pipeline_id) else {
+    let (Some(pipeline), Some(lighting_settings_uniforms)) = (
+        pipeline_cache.get_render_pipeline(pipeline_id),
+        world
+            .resource::<ComponentUniforms<ExtractedLighting2dSettings>>()
+            .binding(),
+    ) else {
         return;
     };
 
@@ -229,7 +235,12 @@ pub fn run_composite_pass<'w>(
     let bind_group = render_context.render_device().create_bind_group(
         "composite_bind_group",
         &world.resource::<Lighting2dCompositePipeline>().layout,
-        &BindGroupEntries::sequential((post_process.source, &input.default_view, &sampler)),
+        &BindGroupEntries::sequential((
+            lighting_settings_uniforms,
+            post_process.source,
+            &input.default_view,
+            &sampler,
+        )),
     );
 
     let mut pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
@@ -243,7 +254,7 @@ pub fn run_composite_pass<'w>(
     });
 
     pass.set_render_pipeline(pipeline);
-    pass.set_bind_group(0, &bind_group, &[]);
+    pass.set_bind_group(0, &bind_group, &[settings_uniform_offset]);
     pass.draw(0..3, 0..1);
 }
 
@@ -294,16 +305,18 @@ impl ViewNode for LightingNode {
         );
         lighting_texture.flip();
 
-        run_penetration_pass(
-            world,
-            render_context,
-            camera,
-            lighting_texture.input(),
-            lighting_texture.output(),
-            &graph.view_entity(),
-            view_uniform_offset.offset,
-        );
-        lighting_texture.flip();
+        if true {
+            run_penetration_pass(
+                world,
+                render_context,
+                camera,
+                lighting_texture.input(),
+                lighting_texture.output(),
+                &graph.view_entity(),
+                view_uniform_offset.offset,
+            );
+            lighting_texture.flip();
+        }
 
         if lighting_settings.blur > 0.0 {
             run_blur_pass(
@@ -323,6 +336,7 @@ impl ViewNode for LightingNode {
             lighting_texture.input(),
             view_target,
             composite_pipeline_id.0,
+            settings_uniform_index.index(),
         );
 
         Ok(())
