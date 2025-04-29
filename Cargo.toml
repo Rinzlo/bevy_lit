@@ -12,7 +12,7 @@ exclude = ["static/*"]
 
 [dependencies]
 bevy = { version = "0.15", default-features = false, features = [ "bevy_core_pipeline", "bevy_winit", "png" ] }
-bevy_voronoi = { path = "../voronoi_plugin/" }
+bevy_voronoi = "0.2" 
 
 [dev-dependencies]
 bevy = "0.15"
