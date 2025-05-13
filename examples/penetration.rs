@@ -8,20 +8,7 @@ use bevy_lit::prelude::*;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        titlebar_shown: true,
-                        titlebar_transparent: true,
-                        titlebar_show_title: false,
-                        titlebar_show_buttons: true,
-                        has_shadow: true,
-                        fullsize_content_view: true,
-                        ..default()
-                    }),
-                    ..default()
-                })
-                .set(ImagePlugin::default_nearest()),
+            DefaultPlugins.set(ImagePlugin::default_nearest()),
             Lighting2dPlugin,
         ))
         .insert_resource(ClearColor(Color::from(GRAY_500)))
@@ -40,7 +27,16 @@ fn setup(
 ) {
     commands.spawn((
         Camera2d,
-        Lighting2dSettings::default(),
+        Lighting2dSettings {
+            penetration: PenetrationSettings {
+                max: 20.0,
+                intensity: 1.0,
+                falloff: 1.0,
+                sample_directions: 16,
+                sample_steps: 8,
+            },
+            ..default()
+        },
         AmbientLight2d {
             brightness: 0.2,
             ..default()

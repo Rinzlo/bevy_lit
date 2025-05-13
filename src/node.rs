@@ -102,18 +102,18 @@ fn run_penetration_pass<'w>(
     camera: &ExtractedCamera,
     input: &CachedTexture,
     output: &CachedTexture,
-    view_entity: &Entity,
     view_uniform_offset: u32,
+    settings_uniform_offset: u32,
 ) {
     let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
     let pipeline_cache = world.resource::<PipelineCache>();
 
-    let (Some(pipeline), Some(view_uniforms), Some(point_lights)) = (
+    let (Some(pipeline), Some(view_uniforms), Some(lighting_settings_uniforms)) = (
         pipeline_cache.get_render_pipeline(prepass_pipelines.penetration_pipeline),
         world.resource::<ViewUniforms>().uniforms.binding(),
         world
-            .resource::<Lighing2dViewArrayBuffer<ExtractedPointLight2d>>()
-            .get(view_entity),
+            .resource::<ComponentUniforms<ExtractedLighting2dSettings>>()
+            .binding(),
     ) else {
         return;
     };
@@ -127,10 +127,9 @@ fn run_penetration_pass<'w>(
         &prepass_pipelines.penetration_layout,
         &BindGroupEntries::sequential((
             view_uniforms,
+            lighting_settings_uniforms,
             &input.default_view,
             &sampler,
-            point_lights.data.binding().unwrap(),
-            point_lights.count.binding().unwrap(),
         )),
     );
 
@@ -149,7 +148,11 @@ fn run_penetration_pass<'w>(
     }
 
     pass.set_render_pipeline(pipeline);
-    pass.set_bind_group(0, &bind_group, &[view_uniform_offset]);
+    pass.set_bind_group(
+        0,
+        &bind_group,
+        &[view_uniform_offset, settings_uniform_offset],
+    );
     pass.draw(0..3, 0..1);
 }
 
@@ -305,18 +308,16 @@ impl ViewNode for LightingNode {
         );
         lighting_texture.flip();
 
-        if true {
-            run_penetration_pass(
-                world,
-                render_context,
-                camera,
-                lighting_texture.input(),
-                lighting_texture.output(),
-                &graph.view_entity(),
-                view_uniform_offset.offset,
-            );
-            lighting_texture.flip();
-        }
+        run_penetration_pass(
+            world,
+            render_context,
+            camera,
+            lighting_texture.input(),
+            lighting_texture.output(),
+            view_uniform_offset.offset,
+            settings_uniform_index.index(),
+        );
+        lighting_texture.flip();
 
         if lighting_settings.blur > 0.0 {
             run_blur_pass(

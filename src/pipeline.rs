@@ -101,10 +101,9 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 ShaderStages::FRAGMENT,
                 (
                     uniform_buffer::<ViewUniform>(true),
+                    uniform_buffer::<ExtractedLighting2dSettings>(true),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
-                    storage_buffer_read_only::<ExtractedPointLight2d>(false),
-                    uniform_buffer::<u32>(false),
                 ),
             ),
         );

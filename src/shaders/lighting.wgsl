@@ -21,20 +21,22 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         let light = lights[i];
         let light_dist = distance(pos, light.center);
 
-        if light_dist < light.radius {
-            var light_contrib = light.color.rgb * attenuation(light, light_dist);
-
-            // inside occluder
-            if sdf <= 0.0 {
-                light_contrib *= select(1.0, 0.0, bool(settings.tint_occluders));
-            } else {
-                if bool(light.shadows_enabled) {
-                    light_contrib *= raymarch(pos, light.center);
-                }
-            }
-
-            lighting_color += light_contrib;
+        if light_dist > light.radius {
+            continue;
         }
+
+        var light_contrib = light.color.rgb * attenuation(light, light_dist);
+
+        // inside occluder
+        if sdf <= 0.0 {
+            light_contrib *= select(1.0, 0.0, bool(settings.tint_occluders));
+        } else {
+            if bool(light.shadows_enabled) {
+                light_contrib *= raymarch(pos, light.center);
+            }
+        }
+
+        lighting_color += light_contrib;
     }
 
     if sdf > 0.0 {

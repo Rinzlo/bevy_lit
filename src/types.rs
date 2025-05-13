@@ -46,6 +46,33 @@ impl Default for RaymarchSettings {
     }
 }
 
+/// Penetration settings
+#[derive(Clone, ShaderType, Reflect)]
+pub struct PenetrationSettings {
+    /// This defines the effective "thickness" of the light bleed.
+    pub max: f32,
+    /// Intensity multiplier for the final penetration color.
+    pub intensity: f32,
+    /// Controls how quickly light fades as it penetrates.
+    pub falloff: f32,
+    /// Number of radial directions to sample around the occluder.
+    pub sample_directions: u32,
+    /// Number of samples along each direction inside the occluder.
+    pub sample_steps: u32,
+}
+
+impl Default for PenetrationSettings {
+    fn default() -> Self {
+        Self {
+            max: 0.0,
+            intensity: 0.0,
+            falloff: 0.0,
+            sample_directions: 8,
+            sample_steps: 8,
+        }
+    }
+}
+
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
 #[derive(Component, Clone, Reflect)]
@@ -57,8 +84,10 @@ pub struct Lighting2dSettings {
     pub fixed_resolution: bool,
     /// Raymarch settings
     pub raymarch: RaymarchSettings,
-    /// whether light occlusion areas should be tinted by the ambient light
+    /// Whether light occlusion areas should be tinted by the ambient light
     pub tint_occluders: bool,
+    /// Controls how much light can penetrate into occluders and how it falls off
+    pub penetration: PenetrationSettings,
 }
 
 impl Default for Lighting2dSettings {
@@ -66,8 +95,9 @@ impl Default for Lighting2dSettings {
         Self {
             blur: 0.0,
             fixed_resolution: true,
-            raymarch: Default::default(),
             tint_occluders: true,
+            raymarch: Default::default(),
+            penetration: Default::default(),
         }
     }
 }

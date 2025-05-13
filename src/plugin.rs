@@ -31,7 +31,7 @@ use crate::{
         VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
-    types::{LightOccluder2d, RaymarchSettings},
+    types::{LightOccluder2d, PenetrationSettings, RaymarchSettings},
     util::create_aux_texture,
 };
 
@@ -164,11 +164,13 @@ pub fn check_lighting_2d_artifacts_bounds(
 
 #[derive(Component, Clone, ShaderType)]
 pub struct ExtractedLighting2dSettings {
+    #[size(16)]
+    pub raymarch: RaymarchSettings,
+    pub penetration: PenetrationSettings,
+    pub ambient_light: LinearRgba,
     pub blur: f32,
     pub fixed_resolution: u32,
     pub tint_occluders: u32,
-    pub ambient_light: LinearRgba,
-    pub raymarch: RaymarchSettings,
 }
 
 fn extract_lighting_settings(
@@ -186,8 +188,9 @@ fn extract_lighting_settings(
                     blur: settings.blur,
                     fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
                     ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
-                    raymarch: settings.raymarch.clone(),
                     tint_occluders: if settings.tint_occluders { 1 } else { 0 },
+                    raymarch: settings.raymarch.clone(),
+                    penetration: settings.penetration.clone(),
                 },
             )
         })
