@@ -22,6 +22,7 @@ use crate::{
         ExtractedLighting2dSettings, ExtractedPointLight2d, Lighing2dViewArrayBuffer,
         Lighting2dCompositePipelineId, Lighting2dTexture,
     },
+    types::PenetrationSettings,
 };
 
 fn run_lighting_pass<'w>(
@@ -308,16 +309,18 @@ impl ViewNode for LightingNode {
         );
         lighting_texture.flip();
 
-        run_penetration_pass(
-            world,
-            render_context,
-            camera,
-            lighting_texture.input(),
-            lighting_texture.output(),
-            view_uniform_offset.offset,
-            settings_uniform_index.index(),
-        );
-        lighting_texture.flip();
+        if should_run_penetration_pass(&lighting_settings.penetration) {
+            run_penetration_pass(
+                world,
+                render_context,
+                camera,
+                lighting_texture.input(),
+                lighting_texture.output(),
+                view_uniform_offset.offset,
+                settings_uniform_index.index(),
+            );
+            lighting_texture.flip();
+        }
 
         if lighting_settings.blur > 0.0 {
             run_blur_pass(
@@ -342,4 +345,11 @@ impl ViewNode for LightingNode {
 
         Ok(())
     }
+}
+
+fn should_run_penetration_pass(penetration: &PenetrationSettings) -> bool {
+    penetration.max > 0.0
+        && penetration.intensity > 0.0
+        && penetration.sample_directions > 0
+        && penetration.sample_steps > 0
 }
