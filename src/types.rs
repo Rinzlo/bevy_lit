@@ -1,10 +1,14 @@
 use bevy::{
     prelude::*,
     reflect::Reflect,
-    render::{render_resource::ShaderType, sync_world::SyncToRenderWorld, view::Visibility},
+    render::{
+        render_resource::ShaderType,
+        sync_world::SyncToRenderWorld,
+        view::{add_visibility_class, Visibility, VisibilityClass},
+    },
     transform::components::Transform,
 };
-use bevy_voronoi::prelude::VoronoiMaterial;
+use bevy_voronoi::prelude::{VoronoiCamera, VoronoiMaterial};
 
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
@@ -30,7 +34,8 @@ impl Default for AmbientLight2d {
 pub struct RaymarchSettings {
     /// The maximum steps the raymarch loop can take to return a result
     pub max_steps: u32,
-    /// Random number from 0.0 to 1.0. Maximizes the number of raymarching steps, improving approximation
+    /// Random number from 0.0 to 1.0. Minimizes the number of raymarching steps while reducing
+    /// noise
     pub jitter_contrib: f32,
     /// How sharp should the shadow projections be
     pub sharpness: f32,
@@ -46,35 +51,69 @@ impl Default for RaymarchSettings {
     }
 }
 
+/// Penetration settings
+#[derive(Clone, ShaderType, Reflect)]
+pub struct PenetrationSettings {
+    /// This defines the effective "thickness" of the light bleed.
+    pub max: f32,
+    /// Intensity multiplier for the final penetration color.
+    pub intensity: f32,
+    /// Controls how quickly light fades as it penetrates.
+    pub falloff: f32,
+    /// Number of radial directions to sample around the occluder.
+    pub sample_directions: u32,
+    /// Number of samples along each direction inside the occluder.
+    pub sample_steps: u32,
+}
+
+impl Default for PenetrationSettings {
+    fn default() -> Self {
+        Self {
+            max: 0.0,
+            intensity: 0.0,
+            falloff: 0.0,
+            sample_directions: 8,
+            sample_steps: 8,
+        }
+    }
+}
+
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
 #[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, AmbientLight2d)]
+#[require(SyncToRenderWorld, AmbientLight2d, VoronoiCamera)]
 pub struct Lighting2dSettings {
-    /// The blur coc (circle of confusion) dimension contributing to the softness of the shadows
-    pub blur: f32,
-    /// If true (default), the blur is constant, else it's calculated in relation to the viewport size
-    pub fixed_resolution: bool,
     /// Raymarch settings
     pub raymarch: RaymarchSettings,
-    /// whether light occlusion areas should be tinted by the ambient light
+    /// Controls how much light can penetrate into occluders and how it falls off
+    pub penetration: PenetrationSettings,
+    /// Whether light occlusion areas should be tinted by lights
     pub tint_occluders: bool,
+    /// Enables down sampling for the light map textures. Defaults to 2
+    pub down_sample: u32,
+}
+
+impl Lighting2dSettings {
+    pub fn create_voronoi_camera() -> VoronoiCamera {
+        VoronoiCamera::default()
+    }
 }
 
 impl Default for Lighting2dSettings {
     fn default() -> Self {
         Self {
-            blur: 0.0,
-            fixed_resolution: true,
             raymarch: Default::default(),
-            tint_occluders: true,
+            penetration: Default::default(),
+            tint_occluders: Default::default(),
+            down_sample: 2,
         }
     }
 }
 
 /// Represents a point light in a 2D environment.
 #[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, Transform, Visibility)]
+#[require(SyncToRenderWorld, Transform, Visibility, VisibilityClass)]
+#[component(on_add = add_visibility_class::<PointLight2d>)]
 pub struct PointLight2d {
     /// The color of the point light.
     pub color: Color,

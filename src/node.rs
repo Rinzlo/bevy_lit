@@ -20,8 +20,9 @@ use crate::{
     pipeline::{Lighting2dCompositePipeline, Lighting2dPrepassPipelines},
     plugin::{
         ExtractedLighting2dSettings, ExtractedPointLight2d, Lighing2dViewArrayBuffer,
-        Lighting2dCompositePipelineId,
+        Lighting2dCompositePipelineId, Lighting2dTexture,
     },
+    types::PenetrationSettings,
 };
 
 fn run_lighting_pass<'w>(
@@ -96,9 +97,10 @@ fn run_lighting_pass<'w>(
     pass.draw(0..3, 0..1);
 }
 
-fn run_blur_pass<'w>(
+fn run_penetration_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
+    camera: &ExtractedCamera,
     input: &CachedTexture,
     output: &CachedTexture,
     view_uniform_offset: u32,
@@ -108,7 +110,7 @@ fn run_blur_pass<'w>(
     let pipeline_cache = world.resource::<PipelineCache>();
 
     let (Some(pipeline), Some(view_uniforms), Some(lighting_settings_uniforms)) = (
-        pipeline_cache.get_render_pipeline(prepass_pipelines.blur_pipeline),
+        pipeline_cache.get_render_pipeline(prepass_pipelines.penetration_pipeline),
         world.resource::<ViewUniforms>().uniforms.binding(),
         world
             .resource::<ComponentUniforms<ExtractedLighting2dSettings>>()
@@ -122,8 +124,8 @@ fn run_blur_pass<'w>(
         .create_sampler(&SamplerDescriptor::default());
 
     let bind_group = render_context.render_device().create_bind_group(
-        "blur_bind_group",
-        &prepass_pipelines.blur_layout,
+        "penetration_bind_group",
+        &prepass_pipelines.penetration_layout,
         &BindGroupEntries::sequential((
             view_uniforms,
             lighting_settings_uniforms,
@@ -133,7 +135,7 @@ fn run_blur_pass<'w>(
     );
 
     let mut pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
-        label: Some("blur_pass"),
+        label: Some("penetration_pass"),
         color_attachments: &[Some(RenderPassColorAttachment {
             view: &output.default_view,
             resolve_target: None,
@@ -141,6 +143,10 @@ fn run_blur_pass<'w>(
         })],
         ..default()
     });
+
+    if let Some(viewport) = camera.viewport.as_ref() {
+        pass.set_camera_viewport(viewport);
+    }
 
     pass.set_render_pipeline(pipeline);
     pass.set_bind_group(
@@ -157,10 +163,16 @@ pub fn run_composite_pass<'w>(
     input: &CachedTexture,
     view_target: &ViewTarget,
     pipeline_id: CachedRenderPipelineId,
+    settings_uniform_offset: u32,
 ) {
     let pipeline_cache = world.resource::<PipelineCache>();
 
-    let Some(pipeline) = pipeline_cache.get_render_pipeline(pipeline_id) else {
+    let (Some(pipeline), Some(lighting_settings_uniforms)) = (
+        pipeline_cache.get_render_pipeline(pipeline_id),
+        world
+            .resource::<ComponentUniforms<ExtractedLighting2dSettings>>()
+            .binding(),
+    ) else {
         return;
     };
 
@@ -172,7 +184,12 @@ pub fn run_composite_pass<'w>(
     let bind_group = render_context.render_device().create_bind_group(
         "composite_bind_group",
         &world.resource::<Lighting2dCompositePipeline>().layout,
-        &BindGroupEntries::sequential((post_process.source, &input.default_view, &sampler)),
+        &BindGroupEntries::sequential((
+            lighting_settings_uniforms,
+            post_process.source,
+            &input.default_view,
+            &sampler,
+        )),
     );
 
     let mut pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
@@ -186,7 +203,7 @@ pub fn run_composite_pass<'w>(
     });
 
     pass.set_render_pipeline(pipeline);
-    pass.set_bind_group(0, &bind_group, &[]);
+    pass.set_bind_group(0, &bind_group, &[settings_uniform_offset]);
     pass.draw(0..3, 0..1);
 }
 
@@ -202,6 +219,7 @@ impl ViewNode for LightingNode {
         Read<ViewUniformOffset>,
         Read<Lighting2dCompositePipelineId>,
         Read<VoronoiTexture>,
+        Read<Lighting2dTexture>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
         Read<ExtractedLighting2dSettings>,
     );
@@ -216,45 +234,55 @@ impl ViewNode for LightingNode {
             view_uniform_offset,
             composite_pipeline_id,
             voronoi_texture,
+            lighting_texture,
             settings_uniform_index,
             lighting_settings,
         ): QueryItem<'w, Self::ViewQuery>,
         world: &'w World,
     ) -> Result<(), NodeRunError> {
-        let mut voronoi_texture = voronoi_texture.clone();
+        let mut lighting_texture = lighting_texture.clone();
 
         run_lighting_pass(
             world,
             render_context,
             camera,
             voronoi_texture.input(),
-            voronoi_texture.output(),
+            lighting_texture.output(),
             &graph.view_entity(),
             view_uniform_offset.offset,
             settings_uniform_index.index(),
         );
-        voronoi_texture.flip();
+        lighting_texture.flip();
 
-        if lighting_settings.blur > 0.0 {
-            run_blur_pass(
+        if should_run_penetration_pass(&lighting_settings.penetration) {
+            run_penetration_pass(
                 world,
                 render_context,
-                voronoi_texture.input(),
-                voronoi_texture.output(),
+                camera,
+                lighting_texture.input(),
+                lighting_texture.output(),
                 view_uniform_offset.offset,
                 settings_uniform_index.index(),
             );
-            voronoi_texture.flip();
+            lighting_texture.flip();
         }
 
         run_composite_pass(
             world,
             render_context,
-            voronoi_texture.input(),
+            lighting_texture.input(),
             view_target,
             composite_pipeline_id.0,
+            settings_uniform_index.index(),
         );
 
         Ok(())
     }
+}
+
+fn should_run_penetration_pass(penetration: &PenetrationSettings) -> bool {
+    penetration.max > 0.0
+        && penetration.intensity > 0.0
+        && penetration.sample_directions > 0
+        && penetration.sample_steps > 0
 }

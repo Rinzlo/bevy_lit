@@ -1,4 +1,5 @@
 use bevy::{
+    asset::weak_handle,
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
     prelude::*,
     render::{
@@ -16,11 +17,12 @@ use bevy::{
 
 use crate::plugin::{ExtractedLighting2dSettings, ExtractedPointLight2d};
 
-pub const TYPES_SHADER: Handle<Shader> = Handle::weak_from_u128(76578417911493);
-pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> = Handle::weak_from_u128(43290875047924);
-pub const LIGHTING_SHADER: Handle<Shader> = Handle::weak_from_u128(47320975447604);
-pub const BLUR_SHADER: Handle<Shader> = Handle::weak_from_u128(43806754295913);
-pub const COMPOSITE_SHADER: Handle<Shader> = Handle::weak_from_u128(57420546547174);
+pub const TYPES_SHADER: Handle<Shader> = weak_handle!("a7b3c9d2-e8f4-1a2b-9c3d-4e5f6789abcd");
+pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> =
+    weak_handle!("f3e8d7c2-b9a1-4f6e-8d2c-9b7a5e3f1d8c");
+pub const LIGHTING_SHADER: Handle<Shader> = weak_handle!("2c9b7a5e-3f1d-8c6b-4a9e-7d2f5c8b1a4e");
+pub const PENETRATION_SHADER: Handle<Shader> = weak_handle!("8f4e2d9c-7b5a-3e1f-9d6c-2a8f5b3e7d1c");
+pub const COMPOSITE_SHADER: Handle<Shader> = weak_handle!("9c6b4a2e-8f5d-1c7b-3a9f-6e2d8c5b1a7e");
 
 fn create_pipeline(
     render_device: &RenderDevice,
@@ -62,8 +64,8 @@ fn create_pipeline(
 pub struct Lighting2dPrepassPipelines {
     pub lighting_layout: BindGroupLayout,
     pub lighting_pipeline: CachedRenderPipelineId,
-    pub blur_layout: BindGroupLayout,
-    pub blur_pipeline: CachedRenderPipelineId,
+    pub penetration_layout: BindGroupLayout,
+    pub penetration_pipeline: CachedRenderPipelineId,
 }
 
 impl FromWorld for Lighting2dPrepassPipelines {
@@ -89,11 +91,11 @@ impl FromWorld for Lighting2dPrepassPipelines {
             ),
         );
 
-        let (blur_layout, blur_pipeline) = create_pipeline(
+        let (penetration_layout, penetration_pipeline) = create_pipeline(
             render_device,
             pipeline_cache,
-            "blur",
-            BLUR_SHADER,
+            "penetration",
+            PENETRATION_SHADER,
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::FRAGMENT,
                 (
@@ -108,8 +110,8 @@ impl FromWorld for Lighting2dPrepassPipelines {
         Self {
             lighting_layout,
             lighting_pipeline,
-            blur_layout,
-            blur_pipeline,
+            penetration_layout,
+            penetration_pipeline,
         }
     }
 }
@@ -127,6 +129,7 @@ impl FromWorld for Lighting2dCompositePipeline {
                 &BindGroupLayoutEntries::sequential(
                     ShaderStages::FRAGMENT,
                     (
+                        uniform_buffer::<ExtractedLighting2dSettings>(true),
                         texture_2d(TextureSampleType::Float { filterable: true }),
                         texture_2d(TextureSampleType::Float { filterable: true }),
                         sampler(SamplerBindingType::Filtering),
