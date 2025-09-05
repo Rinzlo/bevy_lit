@@ -1,5 +1,7 @@
 use bevy::render::{
-    render_resource::{TextureDescriptor, TextureDimension, TextureFormat, TextureUsages},
+    render_resource::{
+        Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+    },
     renderer::RenderDevice,
     texture::{CachedTexture, TextureCache},
     view::ViewTarget,
@@ -10,12 +12,20 @@ pub fn create_aux_texture(
     texture_cache: &mut TextureCache,
     render_device: &RenderDevice,
     label: &'static str,
+    down_sample: u32,
 ) -> CachedTexture {
+    let size = view_target.main_texture().size();
+    let size = Extent3d {
+        width: size.width / down_sample,
+        height: size.height / down_sample,
+        depth_or_array_layers: size.depth_or_array_layers,
+    };
+
     texture_cache.get(
         render_device,
         TextureDescriptor {
             label: Some(label),
-            size: view_target.main_texture().size(),
+            size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,

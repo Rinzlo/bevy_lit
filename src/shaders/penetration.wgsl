@@ -10,7 +10,7 @@
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let pos = frag_to_world(in.position).xy;
+    let pos = frag_to_world(in.position * settings.down_sample).xy;
     let current = textureSample(lighting_texture, lighting_sampler, in.uv);
     let sdf = current.a;
     let p = settings.penetration;
@@ -51,5 +51,5 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         penetration_color = (penetration_color / total_weight) * p.intensity;
     }
 
-    return vec4(penetration_color, 1.0);
+    return vec4(penetration_color, sdf);
 }

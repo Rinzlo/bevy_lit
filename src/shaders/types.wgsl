@@ -19,9 +19,7 @@ struct Lighting2dSettings {
     raymarch: RaymarchSettings,
     penetration: PenetrationSettings,
     ambient_light: vec4<f32>,
-    // blur circle of confusion diameter
-    coc: f32,
-    fixed_resolution: u32,
+    down_sample: f32,
     tint_occluders: u32,
 }
 
