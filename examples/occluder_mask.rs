@@ -41,6 +41,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
     commands.spawn((
         Camera2d,
         Lighting2dSettings {
+            edge_intensity: 4.0,
             raymarch: RaymarchSettings {
                 max_steps: 32,
                 jitter_contrib: 0.5,

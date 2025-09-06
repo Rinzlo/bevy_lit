@@ -195,6 +195,7 @@ pub struct ExtractedLighting2dSettings {
     pub ambient_light: LinearRgba,
     pub down_sample: f32,
     pub tint_occluders: u32,
+    pub edge_intensity: f32,
 }
 
 fn extract_lighting_settings(
@@ -210,6 +211,7 @@ fn extract_lighting_settings(
             raymarch: settings.raymarch.clone(),
             penetration: settings.penetration.clone(),
             tint_occluders: if settings.tint_occluders { 1 } else { 0 },
+            edge_intensity: settings.edge_intensity,
         });
     }
 }

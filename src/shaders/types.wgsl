@@ -21,6 +21,7 @@ struct Lighting2dSettings {
     ambient_light: vec4<f32>,
     down_sample: f32,
     tint_occluders: u32,
+    edge_intensity: f32,
 }
 
 struct LightOccluder2d {
