@@ -4,8 +4,14 @@
 
 ### Features
 - Bevy 0.16
-- Introduce support for light penetration
 - Introduce downsampling for light map textures
+- Introduce support for light penetration
+- Introduce support for egde highlighting with the new `LightingSettings2d` option `edge_intensity`
+
+### Breaking
+
+- Blur is now calculated in relation using the physical pixel size of the light map.
+- Dropped support for the `LightingSettings2d` option `fixed_resolution` that enabled blur relative to logical pixel size. 
 
 ## 0.6.0 - Mesh and Texture Occluders 🎉
 
