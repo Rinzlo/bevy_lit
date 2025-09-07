@@ -9,7 +9,7 @@ use bevy::{
         render_graph::{RenderGraphApp, ViewNodeRunner},
         render_resource::{
             CachedRenderPipelineId, GpuArrayBufferable, PipelineCache, ShaderType,
-            SpecializedRenderPipelines, StorageBuffer, UniformBuffer,
+            SpecializedRenderPipelines, StorageBuffer,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::RenderEntity,
@@ -321,24 +321,19 @@ fn prepare_composite_pipelines(
     }
 }
 
-#[derive(Deref, DerefMut)]
-pub struct Lighting2dArrayBuffer<T: GpuArrayBufferable> {
-    #[deref]
-    pub data: StorageBuffer<Vec<T>>,
-    pub count: UniformBuffer<u32>,
+#[derive(ShaderType)]
+pub struct Lighting2dArray<T: GpuArrayBufferable> {
+    pub count: u32,
+    #[size(runtime)]
+    pub data: Vec<T>,
 }
+
+#[derive(Deref, DerefMut)]
+pub struct Lighting2dArrayBuffer<T: GpuArrayBufferable>(StorageBuffer<Lighting2dArray<T>>);
 
 impl<T: GpuArrayBufferable> Lighting2dArrayBuffer<T> {
     pub fn new(data: Vec<T>, count: u32) -> Self {
-        Self {
-            data: StorageBuffer::from(data),
-            count: UniformBuffer::from(count),
-        }
-    }
-
-    pub fn write(&mut self, device: &RenderDevice, queue: &RenderQueue) {
-        self.data.write_buffer(device, queue);
-        self.count.write_buffer(device, queue);
+        Self(StorageBuffer::from(Lighting2dArray { data, count }))
     }
 }
 
@@ -377,6 +372,6 @@ fn prepare_lighting2d_view_array_buffers<T: Component + GpuArrayBufferable, U: C
         view_array_buffer
             .get_mut(&view_entity)
             .unwrap()
-            .write(&render_device, &render_queue);
+            .write_buffer(&render_device, &render_queue);
     }
 }

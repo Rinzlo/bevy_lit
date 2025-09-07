@@ -51,9 +51,7 @@ fn run_lighting_pass<'w>(
         return;
     };
 
-    let (Some(point_lights), Some(point_lights_count)) =
-        (point_lights.data.binding(), point_lights.count.binding())
-    else {
+    let Some(point_lights) = point_lights.binding() else {
         return;
     };
 
@@ -68,7 +66,6 @@ fn run_lighting_pass<'w>(
             view_uniforms,
             lighting_settings_uniforms,
             point_lights,
-            point_lights_count,
             &input.default_view,
             &sampler,
         )),

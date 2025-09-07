@@ -1,14 +1,13 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
-    types::{Lighting2dSettings, PointLight2d},
+    types::{Lighting2dSettings, PointLight2dBuffer, PointLight2d},
     view_transformations::{frag_to_world, world_to_uv}
 }
 
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
-@group(0) @binding(2) var<storage> lights: array<PointLight2d>;
-@group(0) @binding(3) var<uniform> lights_count: u32;
-@group(0) @binding(4) var voronoi_texture: texture_2d<f32>;
-@group(0) @binding(5) var voronoi_sampler: sampler;
+@group(0) @binding(2) var<storage> lights: PointLight2dBuffer;
+@group(0) @binding(3) var voronoi_texture: texture_2d<f32>;
+@group(0) @binding(4) var voronoi_sampler: sampler;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
@@ -17,8 +16,8 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
     var lighting_color = vec3(0.0);
 
-    for (var i = 0u; i < lights_count; i++) {
-        let light = lights[i];
+    for (var i = 0u; i < lights.count; i++) {
+        let light = lights.data[i];
         let light_dist = distance(pos, light.center);
 
         if light_dist > light.radius {

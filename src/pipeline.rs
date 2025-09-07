@@ -15,7 +15,7 @@ use bevy::{
     },
 };
 
-use crate::plugin::{ExtractedLighting2dSettings, ExtractedPointLight2d};
+use crate::plugin::{ExtractedLighting2dSettings, ExtractedPointLight2d, Lighting2dArray};
 
 pub const TYPES_SHADER: Handle<Shader> = weak_handle!("a7b3c9d2-e8f4-1a2b-9c3d-4e5f6789abcd");
 pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> =
@@ -84,8 +84,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
                 (
                     uniform_buffer::<ViewUniform>(true),
                     uniform_buffer::<ExtractedLighting2dSettings>(true),
-                    storage_buffer_read_only::<ExtractedPointLight2d>(false),
-                    uniform_buffer::<u32>(false),
+                    storage_buffer_read_only::<Lighting2dArray<ExtractedPointLight2d>>(false),
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     sampler(SamplerBindingType::Filtering),
                 ),

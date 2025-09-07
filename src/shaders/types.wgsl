@@ -38,3 +38,8 @@ struct PointLight2d {
     radius: f32,
     shadows_enabled: u32,
 }
+
+struct PointLight2dBuffer {
+    count: u32,
+    data: array<PointLight2d>,
+}
