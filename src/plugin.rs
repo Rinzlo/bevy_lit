@@ -117,7 +117,7 @@ fn update_voronoi_camera(
     >,
 ) {
     for (settings, mut voronoi_camera) in &mut query {
-        voronoi_camera.down_sample = settings.down_sample
+        voronoi_camera.scale = settings.scale;
     }
 }
 
@@ -178,7 +178,7 @@ pub struct ExtractedLighting2dSettings {
     pub raymarch: RaymarchSettings,
     pub penetration: PenetrationSettings,
     pub ambient_light: LinearRgba,
-    pub down_sample: f32,
+    pub scale: f32,
     pub tint_occluders: u32,
     pub edge_intensity: f32,
     pub blur: i32,
@@ -192,7 +192,7 @@ fn extract_lighting_settings(
 ) {
     for (e, settings, ambient_light) in &ambient_light_query {
         commands.entity(e).insert(ExtractedLighting2dSettings {
-            down_sample: settings.down_sample as f32,
+            scale: settings.scale,
             ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
             raymarch: settings.raymarch.clone(),
             penetration: settings.penetration.clone(),
@@ -285,14 +285,14 @@ fn prepare_lighting2d_textures(
                 &mut texture_cache,
                 &render_device,
                 "lighting2d_texture_a",
-                settings.down_sample as u32,
+                settings.scale,
             ),
             texture_b: create_aux_texture(
                 view_target,
                 &mut texture_cache,
                 &render_device,
                 "lighting2d_texture_b",
-                settings.down_sample as u32,
+                settings.scale,
             ),
         });
     }

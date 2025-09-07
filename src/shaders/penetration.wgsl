@@ -10,7 +10,7 @@
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let pos = frag_to_world(in.position * settings.down_sample).xy;
+    let pos = frag_to_world(in.position / settings.scale).xy;
     let current = textureSample(lighting_texture, lighting_sampler, in.uv);
     let sdf = current.a;
     let p = settings.penetration;

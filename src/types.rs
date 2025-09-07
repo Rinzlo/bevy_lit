@@ -89,8 +89,8 @@ pub struct Lighting2dSettings {
     pub penetration: PenetrationSettings,
     /// Whether light occlusion areas should be tinted by light sources
     pub tint_occluders: bool,
-    /// Enables down sampling for the light map textures. Defaults to 2
-    pub down_sample: u32,
+    /// Enables down sampling for the light map textures. Defaults to 0.5
+    pub scale: f32,
     /// Controls the intensity of light in the egdes of occlusion areas
     pub edge_intensity: f32,
     /// The blur radius to be applied to the light map. Defaults to 0
@@ -109,7 +109,7 @@ impl Default for Lighting2dSettings {
             raymarch: Default::default(),
             penetration: Default::default(),
             tint_occluders: Default::default(),
-            down_sample: 2,
+            scale: 0.5,
             edge_intensity: 0.0,
             blur: 0,
         }

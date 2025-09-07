@@ -19,7 +19,7 @@ struct Lighting2dSettings {
     raymarch: RaymarchSettings,
     penetration: PenetrationSettings,
     ambient_light: vec4<f32>,
-    down_sample: f32,
+    scale: f32,
     tint_occluders: u32,
     edge_intensity: f32,
     blur: i32,

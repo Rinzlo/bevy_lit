@@ -11,7 +11,7 @@
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let pos = frag_to_world(in.position * settings.down_sample).xy;
+    let pos = frag_to_world(in.position / settings.scale).xy;
     let sdf = get_distance(pos);
 
     var lighting_color = vec3(0.0);
@@ -49,7 +49,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 fn get_distance(pos: vec2<f32>) -> f32 {
     let uv = world_to_uv(vec3(pos, 0.0));
     let seed = textureSampleLevel(voronoi_texture, voronoi_sampler, uv, 0.0);
-    let dist = length(pos - frag_to_world(seed * settings.down_sample).xy);
+    let dist = length(pos - frag_to_world(seed / settings.scale).xy);
     // Determine if the pixel is inside or outside the shape
     return select(dist, -dist, seed.w == 1.0);
 }
