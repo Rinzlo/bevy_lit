@@ -12,10 +12,9 @@ exclude = ["static/*"]
 
 [dependencies]
 bevy = { version = "0.16", default-features = false, features = [
-  "bevy_render",
   "bevy_core_pipeline",
   "bevy_winit",
-  "x11",
+  "png",
 ] }
 bevy_voronoi = "0.3.1"
 
