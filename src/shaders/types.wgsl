@@ -22,6 +22,7 @@ struct Lighting2dSettings {
     down_sample: f32,
     tint_occluders: u32,
     edge_intensity: f32,
+    blur: i32,
 }
 
 struct LightOccluder2d {

@@ -93,6 +93,8 @@ pub struct Lighting2dSettings {
     pub down_sample: u32,
     /// Controls the intensity of light in the egdes of occlusion areas
     pub edge_intensity: f32,
+    /// The blur radius to be applied to the light map. Defaults to 0
+    pub blur: u32,
 }
 
 impl Lighting2dSettings {
@@ -109,6 +111,7 @@ impl Default for Lighting2dSettings {
             tint_occluders: Default::default(),
             down_sample: 2,
             edge_intensity: 0.0,
+            blur: 0,
         }
     }
 }

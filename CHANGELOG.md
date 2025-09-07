@@ -7,9 +7,6 @@
 - Introduce support for light penetration
 - Introduce downsampling for light map textures
 
-### Breaking
-- Dropped support for blur settings
-
 ## 0.6.0 - Mesh and Texture Occluders 🎉
 
 ### Features

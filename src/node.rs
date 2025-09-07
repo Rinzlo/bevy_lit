@@ -7,9 +7,9 @@ use bevy::{
         render_graph::{NodeRunError, RenderGraphContext, RenderLabel, ViewNode},
         render_resource::{
             BindGroupEntries, CachedRenderPipelineId, Operations, PipelineCache,
-            RenderPassColorAttachment, RenderPassDescriptor, SamplerDescriptor,
+            RenderPassColorAttachment, RenderPassDescriptor, SamplerDescriptor, UniformBuffer,
         },
-        renderer::RenderContext,
+        renderer::{RenderContext, RenderQueue},
         texture::CachedTexture,
         view::{ViewTarget, ViewUniformOffset, ViewUniforms},
     },
@@ -157,6 +157,53 @@ fn run_penetration_pass<'w>(
     pass.draw(0..3, 0..1);
 }
 
+fn run_blur_pass<'w>(
+    world: &'w World,
+    render_context: &mut RenderContext<'w>,
+    input: &CachedTexture,
+    output: &CachedTexture,
+    settings_uniform_offset: u32,
+    direction: IVec2,
+) {
+    let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
+    let pipeline_cache = world.resource::<PipelineCache>();
+
+    let mut direction = UniformBuffer::from(direction);
+    direction.write_buffer(
+        render_context.render_device(),
+        world.resource::<RenderQueue>(),
+    );
+    let (Some(pipeline), Some(lighting_settings_uniforms), Some(direction)) = (
+        pipeline_cache.get_render_pipeline(prepass_pipelines.blur_pipeline),
+        world
+            .resource::<ComponentUniforms<ExtractedLighting2dSettings>>()
+            .binding(),
+        direction.binding(),
+    ) else {
+        return;
+    };
+
+    let bind_group = render_context.render_device().create_bind_group(
+        "blur_bind_group",
+        &prepass_pipelines.blur_layout,
+        &BindGroupEntries::sequential((lighting_settings_uniforms, direction, &input.default_view)),
+    );
+
+    let mut pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
+        label: Some("blur_pass"),
+        color_attachments: &[Some(RenderPassColorAttachment {
+            view: &output.default_view,
+            resolve_target: None,
+            ops: Operations::default(),
+        })],
+        ..default()
+    });
+
+    pass.set_render_pipeline(pipeline);
+    pass.set_bind_group(0, &bind_group, &[settings_uniform_offset]);
+    pass.draw(0..3, 0..1);
+}
+
 pub fn run_composite_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
@@ -263,6 +310,27 @@ impl ViewNode for LightingNode {
                 lighting_texture.output(),
                 view_uniform_offset.offset,
                 settings_uniform_index.index(),
+            );
+            lighting_texture.flip();
+        }
+
+        if lighting_settings.blur > 0 {
+            run_blur_pass(
+                world,
+                render_context,
+                lighting_texture.input(),
+                lighting_texture.output(),
+                settings_uniform_index.index(),
+                IVec2::new(1, 0),
+            );
+            lighting_texture.flip();
+            run_blur_pass(
+                world,
+                render_context,
+                lighting_texture.input(),
+                lighting_texture.output(),
+                settings_uniform_index.index(),
+                IVec2::new(0, 1),
             );
             lighting_texture.flip();
         }

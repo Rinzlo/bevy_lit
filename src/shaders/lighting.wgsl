@@ -39,7 +39,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         lighting_color += light_contrib;
     }
 
-    if settings.edge_intensity > 0.0 {
+    if settings.edge_intensity > 0.0 && sdf > 0.0 {
         let edge_intensity = 1.0 / sdf * settings.edge_intensity;
         lighting_color += lighting_color * edge_intensity * 1.0;
     }

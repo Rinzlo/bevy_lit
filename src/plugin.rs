@@ -1,5 +1,5 @@
 use bevy::{
-    asset::load_internal_asset,
+    asset::{embedded_asset, load_internal_asset},
     core_pipeline::core_2d::graph::{Core2d, Node2d},
     ecs::entity::{EntityHashMap, EntityHashSet},
     prelude::*,
@@ -26,8 +26,7 @@ use crate::{
     node::{LightingLabel, LightingNode},
     pipeline::{
         Lighting2dCompositePipeline, Lighting2dPipelineKey, Lighting2dPrepassPipelines,
-        COMPOSITE_SHADER, LIGHTING_SHADER, PENETRATION_SHADER, TYPES_SHADER,
-        VIEW_TRANSFORMATIONS_SHADER,
+        TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
     types::{LightOccluder2d, PenetrationSettings, RaymarchSettings},
@@ -49,24 +48,10 @@ impl Plugin for Lighting2dPlugin {
             "shaders/view_transformations.wgsl",
             Shader::from_wgsl
         );
-        load_internal_asset!(
-            app,
-            LIGHTING_SHADER,
-            "shaders/lighting.wgsl",
-            Shader::from_wgsl
-        );
-        load_internal_asset!(
-            app,
-            PENETRATION_SHADER,
-            "shaders/penetration.wgsl",
-            Shader::from_wgsl
-        );
-        load_internal_asset!(
-            app,
-            COMPOSITE_SHADER,
-            "shaders/composite.wgsl",
-            Shader::from_wgsl
-        );
+        embedded_asset!(app, "shaders/lighting.wgsl");
+        embedded_asset!(app, "shaders/penetration.wgsl");
+        embedded_asset!(app, "shaders/blur.wgsl");
+        embedded_asset!(app, "shaders/composite.wgsl");
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
@@ -196,6 +181,7 @@ pub struct ExtractedLighting2dSettings {
     pub down_sample: f32,
     pub tint_occluders: u32,
     pub edge_intensity: f32,
+    pub blur: i32,
 }
 
 fn extract_lighting_settings(
@@ -212,6 +198,7 @@ fn extract_lighting_settings(
             penetration: settings.penetration.clone(),
             tint_occluders: if settings.tint_occluders { 1 } else { 0 },
             edge_intensity: settings.edge_intensity,
+            blur: settings.blur as i32,
         });
     }
 }
