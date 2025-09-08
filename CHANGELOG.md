@@ -5,7 +5,7 @@
 ### Features
 
 * **Bevy 0.16 support** – upgraded to the latest Bevy release
-* **Light map downsampling** – improves blur performance and quality on large light maps
+* **Light map downsampling** – added a new `LightingSettings2d.scale` setting that enables downsampling the light map texture
 * **Light penetration** – simulate light bleeding, with configurable intensity and falloff
 * **Edge highlighting** – optional visual effect that emphasizes light boundaries 
 
