@@ -1,66 +1,57 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
-    types::{Lighting2dSettings, PointLight2d},
+    types::{Lighting2dSettings, PointLight2dBuffer, PointLight2d},
     view_transformations::{frag_to_world, world_to_uv}
 }
 
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
-@group(0) @binding(2) var<storage> lights: array<PointLight2d>;
-@group(0) @binding(3) var<uniform> lights_count: u32;
-@group(0) @binding(4) var flood_texture: texture_2d<f32>;
-@group(0) @binding(5) var flood_sampler: sampler;
+@group(0) @binding(2) var<storage> lights: PointLight2dBuffer;
+@group(0) @binding(3) var voronoi_texture: texture_2d<f32>;
+@group(0) @binding(4) var voronoi_sampler: sampler;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let penetration = 7.5;
-    let pos = frag_to_world(in.position).xy;
-    let signed_dist = get_distance(pos);
-    let within_occluder = signed_dist <= 0.0;
+    let pos = frag_to_world(in.position / settings.scale).xy;
+    let sdf = get_distance(pos);
 
-    var lighting_color = vec4(settings.ambient_light.rgb, 1.0);
+    var lighting_color = vec3(0.0);
 
-    if within_occluder && !bool(settings.tint_occluders) {
-        return vec4(1.);
-    }
-
-    for (var i = 0u; i < lights_count; i++) {
-        let light = lights[i];
+    for (var i = 0u; i < lights.count; i++) {
+        let light = lights.data[i];
         let light_dist = distance(pos, light.center);
 
-        if light_dist < light.radius {
-            var light_contrib = vec4(light.color.rgb, 1.0) * attenuation(light, light_dist);
-
-            if bool(light.shadows_enabled) {
-                if !within_occluder {
-                    light_contrib *= raymarch(pos, light.center);
-                }
-            }
-
-            if within_occluder {
-                // - penetration should happen just on the side of the occluder that receives light
-                // - it should penetrate `penetration` amount
-
-                let normalized_dist = -signed_dist / penetration;
-                let penetration_contrib = smoothstep(1.0, 0.0, normalized_dist);
-
-                light_contrib *= penetration_contrib;
-            }
-
-            lighting_color += light_contrib;
+        if light_dist > light.radius {
+            continue;
         }
+
+        var light_contrib = light.color.rgb * attenuation(light, light_dist);
+
+        // inside occluder
+        if sdf <= 0.0 {
+            light_contrib *= select(0.0, 1.0, bool(settings.tint_occluders));
+        } else {
+            if bool(light.shadows_enabled) {
+                light_contrib *= raymarch(pos, light.center);
+            }
+        }
+
+        lighting_color += light_contrib;
     }
 
-    return lighting_color;
+    if settings.edge_intensity > 0.0 && sdf > 0.0 {
+        let edge_intensity = 1.0 / sdf * settings.edge_intensity;
+        lighting_color += lighting_color * edge_intensity * 1.0;
+    }
+
+    return vec4(lighting_color, sdf);
 }
 
 fn get_distance(pos: vec2<f32>) -> f32 {
     let uv = world_to_uv(vec3(pos, 0.0));
-    let seed = textureSampleLevel(flood_texture, flood_sampler, uv, 0.0);
-    var dist = length(pos - frag_to_world(seed).xy);
+    let seed = textureSampleLevel(voronoi_texture, voronoi_sampler, uv, 0.0);
+    let dist = length(pos - frag_to_world(seed / settings.scale).xy);
     // Determine if the pixel is inside or outside the shape
-    let is_inside = seed.z == 1.0;
-    // Signed distance: negative if inside, positive if outside
-    return select(dist, -dist, is_inside);
+    return select(dist, -dist, seed.w == 1.0);
 }
 
 // Attribution: https://lisyarus.github.io/blog/posts/point-light-attenuation.html
@@ -73,7 +64,7 @@ fn attenuation(light: PointLight2d, dist: f32) -> f32 {
     return light.intensity * pow(1.0 - s2, 2.0) / (1.0 + light.falloff * s2);
 }
 
-// Implementation follows the demo in this article 
+// Implementation follows the demo in this article
 // https://www.rykap.com/2020/09/23/distance-fields
 fn raymarch(ray_origin: vec2<f32>, ray_target: vec2<f32>) -> f32 {
     let config = settings.raymarch;
@@ -93,16 +84,15 @@ fn raymarch(ray_origin: vec2<f32>, ray_target: vec2<f32>) -> f32 {
             return light_contrib;
         }
 
-        let dist = get_distance(ray_origin + ray_progress * ray_direction);
+        let sdf = get_distance(ray_origin + ray_progress * ray_direction);
 
         // ray found occluder
-        if dist <= 0.0 {
+        if sdf <= 0.0 {
             break;
         }
 
-        light_contrib = min(light_contrib, dist / ray_progress * sharpness);
-
-        ray_progress += dist * (1.0 - jitter) + jitter * fract(dist * 43758.5453);
+        light_contrib = min(light_contrib, sdf / ray_progress * sharpness);
+        ray_progress += sdf * (1.0 - jitter) + jitter * fract(sdf * 43758.5453);
     }
 
     return 0.0;

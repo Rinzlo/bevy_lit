@@ -4,15 +4,25 @@ struct RaymarchSettings {
     max_steps: u32,
     jitter: f32,
     sharpness: f32,
+    _pad: u32
+}
+
+struct PenetrationSettings {
+    max: f32,
+    intensity: f32,
+    falloff: f32,
+    directions: u32,
+    steps: u32,
 }
 
 struct Lighting2dSettings {
-    // blur circle of confusion diameter
-    coc: f32,
-    fixed_resolution: u32,
-    tint_occluders: u32,
-    ambient_light: vec4<f32>,
     raymarch: RaymarchSettings,
+    penetration: PenetrationSettings,
+    ambient_light: vec4<f32>,
+    scale: f32,
+    tint_occluders: u32,
+    edge_intensity: f32,
+    blur: i32,
 }
 
 struct LightOccluder2d {
@@ -27,4 +37,9 @@ struct PointLight2d {
     intensity: f32,
     radius: f32,
     shadows_enabled: u32,
+}
+
+struct PointLight2dBuffer {
+    count: u32,
+    data: array<PointLight2d>,
 }

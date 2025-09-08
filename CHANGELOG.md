@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.7.0
+
+### Features
+
+* **Bevy 0.16 support** – upgraded to the latest Bevy release
+* **Light map downsampling** – added a new `LightingSettings2d.scale` setting that enables downsampling the light map texture
+* **Light penetration** – simulate light bleeding, with configurable intensity and falloff
+* **Edge highlighting** – optional visual effect that emphasizes light boundaries 
+
+### Breaking
+
+* `LightingSettings2d.blur` is now a `u32` instead of a float
+* Blur is now calculated in **physical pixel space** rather than logical pixels
+* Removed the `LightingSettings2d.fixed_resolution` option. (This was previously used to force physical-pixel–based blur; physical pixels are now always used for consistency across resolutions and devices)
+
+### Migration
+
+```rust
+commands.spawn((
+    Camera2d,
+    Lighting2dSettings {
+        scale: 0.5, // downsample factor for light map
+        edge_intensity: 2.0, // edge highlighting strength
+        penetration: PenetrationSettings {
+            max: 20.0,          // maximum penetration distance in pixels
+            intensity: 1.0,     // brightness factor of penetration light
+            falloff: 1.0,       // attenuation curve
+            sample_directions: 16, // number of ray directions
+            sample_steps: 8,    // steps per ray
+        },
+        ..default()
+    },
+));
+```
+
 ## 0.6.0 - Mesh and Texture Occluders 🎉
 
 ### Features

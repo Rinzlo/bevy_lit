@@ -1,5 +1,6 @@
 use bevy::{
-    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_900, YELLOW_600},
+    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_700, YELLOW_600},
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     prelude::*,
     window::PrimaryWindow,
 };
@@ -7,7 +8,22 @@ use bevy_lit::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, Lighting2dPlugin))
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    present_mode: bevy::window::PresentMode::Immediate,
+                    ..default()
+                }),
+                ..default()
+            }),
+            Lighting2dPlugin,
+            FpsOverlayPlugin {
+                config: FpsOverlayConfig {
+                    enabled: true,
+                    ..default()
+                },
+            },
+        ))
         .insert_resource(ClearColor(Color::from(GRAY_200)))
         .add_systems(Startup, setup)
         .add_systems(Update, update_cursor_light)
@@ -31,10 +47,9 @@ fn setup(
     commands.spawn((
         Camera2d,
         Lighting2dSettings {
-            blur: 32.,
             raymarch: RaymarchSettings {
-                max_steps: 64,
-                jitter_contrib: 0.5,
+                max_steps: 32,
+                jitter_contrib: 0.0,
                 sharpness: 10.,
             },
             ..default()
@@ -63,7 +78,7 @@ fn setup(
 
     for (i, shape) in shapes.into_iter().enumerate() {
         // Distribute colors evenly across the rainbow.
-        let color = Color::from(GRAY_900);
+        let color = Color::from(GRAY_700);
 
         commands.spawn((
             Mesh2d(shape),
@@ -122,15 +137,15 @@ fn update_cursor_light(
     camera_query: Query<(&Camera, &GlobalTransform), With<Lighting2dSettings>>,
     mut point_light_query: Query<&mut Transform, With<CursorLight>>,
 ) {
-    let Ok((camera, camera_transform)) = camera_query.get_single() else {
+    let Ok((camera, camera_transform)) = camera_query.single() else {
         return;
     };
 
-    let Ok(window) = window_query.get_single() else {
+    let Ok(window) = window_query.single() else {
         return;
     };
 
-    let Ok(mut point_light_transform) = point_light_query.get_single_mut() else {
+    let Ok(mut point_light_transform) = point_light_query.single_mut() else {
         return;
     };
 

@@ -1,5 +1,5 @@
 use bevy::{
-    asset::load_internal_asset,
+    asset::{embedded_asset, load_internal_asset},
     core_pipeline::core_2d::graph::{Core2d, Node2d},
     ecs::entity::{EntityHashMap, EntityHashSet},
     prelude::*,
@@ -9,27 +9,28 @@ use bevy::{
         render_graph::{RenderGraphApp, ViewNodeRunner},
         render_resource::{
             CachedRenderPipelineId, GpuArrayBufferable, PipelineCache, ShaderType,
-            SpecializedRenderPipelines, StorageBuffer, UniformBuffer,
+            SpecializedRenderPipelines, StorageBuffer,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::RenderEntity,
+        texture::{CachedTexture, TextureCache},
         view::{
-            check_visibility, ExtractedView, NoFrustumCulling, RenderVisibleEntities,
-            VisibilitySystems,
+            ExtractedView, NoFrustumCulling, RenderVisibleEntities, ViewTarget, VisibilitySystems,
         },
         Extract, Render, RenderApp, RenderSet,
     },
 };
-use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiMaterial};
+use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiCamera, VoronoiMaterial};
 
 use crate::{
     node::{LightingLabel, LightingNode},
     pipeline::{
         Lighting2dCompositePipeline, Lighting2dPipelineKey, Lighting2dPrepassPipelines,
-        BLUR_SHADER, COMPOSITE_SHADER, LIGHTING_SHADER, TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
+        TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
     },
     prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
-    types::{LightOccluder2d, RaymarchSettings},
+    types::{LightOccluder2d, PenetrationSettings, RaymarchSettings},
+    util::create_aux_texture,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.
@@ -47,19 +48,10 @@ impl Plugin for Lighting2dPlugin {
             "shaders/view_transformations.wgsl",
             Shader::from_wgsl
         );
-        load_internal_asset!(
-            app,
-            LIGHTING_SHADER,
-            "shaders/lighting.wgsl",
-            Shader::from_wgsl
-        );
-        load_internal_asset!(app, BLUR_SHADER, "shaders/blur.wgsl", Shader::from_wgsl);
-        load_internal_asset!(
-            app,
-            COMPOSITE_SHADER,
-            "shaders/composite.wgsl",
-            Shader::from_wgsl
-        );
+        embedded_asset!(app, "shaders/lighting.wgsl");
+        embedded_asset!(app, "shaders/penetration.wgsl");
+        embedded_asset!(app, "shaders/blur.wgsl");
+        embedded_asset!(app, "shaders/composite.wgsl");
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
@@ -69,13 +61,18 @@ impl Plugin for Lighting2dPlugin {
         .register_type::<PointLight2d>()
         .register_type::<LightOccluder2d>()
         .register_type::<Lighting2dSettings>()
-        .add_systems(Update, (update_voronoi_material, remove_voronoi_material))
+        .add_systems(
+            Update,
+            (
+                update_voronoi_camera,
+                update_voronoi_material,
+                remove_voronoi_material,
+                remove_voronoi_camera,
+            ),
+        )
         .add_systems(
             PostUpdate,
-            (
-                check_lighting_2d_artifacts_bounds.in_set(VisibilitySystems::CalculateBounds),
-                check_visibility::<With<PointLight2d>>.in_set(VisibilitySystems::CheckVisibility),
-            ),
+            check_lighting_2d_artifacts_bounds.in_set(VisibilitySystems::CalculateBounds),
         );
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -91,7 +88,8 @@ impl Plugin for Lighting2dPlugin {
             .add_systems(
                 Render,
                 (
-                    prepare_composite_pipelines.in_set(RenderSet::Prepare),
+                    (prepare_lighting2d_textures, prepare_composite_pipelines)
+                        .in_set(RenderSet::Prepare),
                     prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>
                         .in_set(RenderSet::PrepareResources),
                 ),
@@ -112,6 +110,28 @@ impl Plugin for Lighting2dPlugin {
     }
 }
 
+fn update_voronoi_camera(
+    mut query: Query<
+        (&Lighting2dSettings, &mut VoronoiCamera),
+        Or<(Added<Lighting2dSettings>, Changed<Lighting2dSettings>)>,
+    >,
+) {
+    for (settings, mut voronoi_camera) in &mut query {
+        voronoi_camera.scale = settings.scale;
+    }
+}
+
+fn remove_voronoi_camera(
+    mut commands: Commands,
+    mut removed: RemovedComponents<Lighting2dSettings>,
+) {
+    for entity in removed.read() {
+        if let Ok(mut commands) = commands.get_entity(entity) {
+            commands.remove::<VoronoiCamera>();
+        }
+    }
+}
+
 fn update_voronoi_material(
     mut query: Query<
         (&LightOccluder2d, &mut VoronoiMaterial),
@@ -128,7 +148,7 @@ fn remove_voronoi_material(
     mut removed: RemovedComponents<LightOccluder2d>,
 ) {
     for entity in removed.read() {
-        if let Some(mut commands) = commands.get_entity(entity) {
+        if let Ok(mut commands) = commands.get_entity(entity) {
             commands.remove::<VoronoiMaterial>();
         }
     }
@@ -154,11 +174,14 @@ pub fn check_lighting_2d_artifacts_bounds(
 
 #[derive(Component, Clone, ShaderType)]
 pub struct ExtractedLighting2dSettings {
-    pub blur: f32,
-    pub fixed_resolution: u32,
-    pub tint_occluders: u32,
-    pub ambient_light: LinearRgba,
+    #[size(16)]
     pub raymarch: RaymarchSettings,
+    pub penetration: PenetrationSettings,
+    pub ambient_light: LinearRgba,
+    pub scale: f32,
+    pub tint_occluders: u32,
+    pub edge_intensity: f32,
+    pub blur: i32,
 }
 
 fn extract_lighting_settings(
@@ -167,23 +190,17 @@ fn extract_lighting_settings(
         Query<(RenderEntity, &Lighting2dSettings, &AmbientLight2d), With<Camera2d>>,
     >,
 ) {
-    let values = ambient_light_query
-        .iter()
-        .map(|(e, settings, ambient_light)| {
-            (
-                e,
-                ExtractedLighting2dSettings {
-                    blur: settings.blur,
-                    fixed_resolution: if settings.fixed_resolution { 1 } else { 0 },
-                    ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
-                    raymarch: settings.raymarch.clone(),
-                    tint_occluders: if settings.tint_occluders { 1 } else { 0 },
-                },
-            )
-        })
-        .collect::<Vec<_>>();
-
-    commands.insert_or_spawn_batch(values);
+    for (e, settings, ambient_light) in &ambient_light_query {
+        commands.entity(e).insert(ExtractedLighting2dSettings {
+            scale: settings.scale,
+            ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
+            raymarch: settings.raymarch.clone(),
+            penetration: settings.penetration.clone(),
+            tint_occluders: if settings.tint_occluders { 1 } else { 0 },
+            edge_intensity: settings.edge_intensity,
+            blur: settings.blur as i32,
+        });
+    }
 }
 
 #[derive(Component, Default, Clone, ShaderType)]
@@ -225,6 +242,62 @@ fn extract_point_lights(
     }
 }
 
+#[derive(Clone, Component)]
+pub struct Lighting2dTexture {
+    flip: bool,
+    texture_a: CachedTexture,
+    texture_b: CachedTexture,
+}
+
+impl Lighting2dTexture {
+    pub fn input(&self) -> &CachedTexture {
+        if self.flip {
+            &self.texture_b
+        } else {
+            &self.texture_a
+        }
+    }
+
+    pub fn output(&self) -> &CachedTexture {
+        if self.flip {
+            &self.texture_a
+        } else {
+            &self.texture_b
+        }
+    }
+
+    pub fn flip(&mut self) {
+        self.flip = !self.flip;
+    }
+}
+
+fn prepare_lighting2d_textures(
+    mut commands: Commands,
+    view_query: Query<(Entity, &ViewTarget, &ExtractedLighting2dSettings)>,
+    render_device: Res<RenderDevice>,
+    mut texture_cache: ResMut<TextureCache>,
+) {
+    for (entity, view_target, settings) in &view_query {
+        commands.entity(entity).insert(Lighting2dTexture {
+            flip: false,
+            texture_a: create_aux_texture(
+                view_target,
+                &mut texture_cache,
+                &render_device,
+                "lighting2d_texture_a",
+                settings.scale,
+            ),
+            texture_b: create_aux_texture(
+                view_target,
+                &mut texture_cache,
+                &render_device,
+                "lighting2d_texture_b",
+                settings.scale,
+            ),
+        });
+    }
+}
+
 #[derive(Component)]
 pub struct Lighting2dCompositePipelineId(pub CachedRenderPipelineId);
 
@@ -248,24 +321,19 @@ fn prepare_composite_pipelines(
     }
 }
 
-#[derive(Deref, DerefMut)]
-pub struct Lighting2dArrayBuffer<T: GpuArrayBufferable> {
-    #[deref]
-    pub data: StorageBuffer<Vec<T>>,
-    pub count: UniformBuffer<u32>,
+#[derive(ShaderType)]
+pub struct Lighting2dArray<T: GpuArrayBufferable> {
+    pub count: u32,
+    #[size(runtime)]
+    pub data: Vec<T>,
 }
+
+#[derive(Deref, DerefMut)]
+pub struct Lighting2dArrayBuffer<T: GpuArrayBufferable>(StorageBuffer<Lighting2dArray<T>>);
 
 impl<T: GpuArrayBufferable> Lighting2dArrayBuffer<T> {
     pub fn new(data: Vec<T>, count: u32) -> Self {
-        Self {
-            data: StorageBuffer::from(data),
-            count: UniformBuffer::from(count),
-        }
-    }
-
-    pub fn write(&mut self, device: &RenderDevice, queue: &RenderQueue) {
-        self.data.write_buffer(device, queue);
-        self.count.write_buffer(device, queue);
+        Self(StorageBuffer::from(Lighting2dArray { data, count }))
     }
 }
 
@@ -285,7 +353,7 @@ fn prepare_lighting2d_view_array_buffers<T: Component + GpuArrayBufferable, U: C
     for (view_entity, visible_entities) in &view_query {
         view_entities.clear();
 
-        for (e, _) in visible_entities.iter::<With<U>>() {
+        for (e, _) in visible_entities.iter::<U>() {
             view_entities.insert(*e);
         }
 
@@ -304,6 +372,6 @@ fn prepare_lighting2d_view_array_buffers<T: Component + GpuArrayBufferable, U: C
         view_array_buffer
             .get_mut(&view_entity)
             .unwrap()
-            .write(&render_device, &render_queue);
+            .write_buffer(&render_device, &render_queue);
     }
 }
