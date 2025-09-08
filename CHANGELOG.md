@@ -7,7 +7,7 @@
 * **Bevy 0.16 support** – upgraded to the latest Bevy release
 * **Light map downsampling** – improves blur performance and quality on large light maps
 * **Light penetration** – simulate light bleeding, with configurable intensity and falloff
-* **Edge highlighting** – optional visual effect that emphasizes light boundaries for a sharper look
+* **Edge highlighting** – optional visual effect that emphasizes light boundaries 
 
 ### Breaking
 
