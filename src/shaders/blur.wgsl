@@ -10,13 +10,12 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     return gaussianBlur(in.position.xy, direction, settings.blur);
 }
 
-// Gaussian weight function
 fn gaussianWeight(x: f32, sigma: f32) -> f32 {
     return exp(-0.5 * (x * x) / (sigma * sigma));
 }
 
 fn gaussianBlur(frag_pos: vec2<f32>, direction: vec2<i32>, radius: i32) -> vec4<f32> {
-    let sigma = f32(radius) * 0.33;
+    let sigma = f32(radius) * 0.25;
     let texel_pos = vec2<i32>(frag_pos);
     let tex_size = vec2<i32>(textureDimensions(texture));
 
