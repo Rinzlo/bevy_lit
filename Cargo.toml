@@ -11,15 +11,15 @@ readme = "README.md"
 exclude = ["static/*"]
 
 [dependencies]
-bevy = { version = "0.16", default-features = false, features = [
+bevy = { path = "../bevy", default-features = false, features = [
   "bevy_core_pipeline",
   "bevy_winit",
   "png",
 ] }
-bevy_voronoi = "0.4"
+bevy_voronoi = { path = "../voronoi" }
 
 [dev-dependencies]
-bevy = { version = "0.16", features = ["bevy_dev_tools"] }
+bevy = { path = "../bevy", features = ["bevy_dev_tools", "dynamic_linking"] }
 rand = { version = "0.9.2" }
 
 [profile.dev]

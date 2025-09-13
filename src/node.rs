@@ -11,16 +11,16 @@ use bevy::{
         },
         renderer::{RenderContext, RenderQueue},
         texture::CachedTexture,
-        view::{ViewTarget, ViewUniformOffset, ViewUniforms},
+        view::{ExtractedView, ViewTarget, ViewUniformOffset, ViewUniforms},
     },
 };
-use bevy_voronoi::prelude::VoronoiTexture;
+use bevy_voronoi::prelude::VoronoiTextures;
 
 use crate::{
     pipeline::{Lighting2dCompositePipeline, Lighting2dPrepassPipelines},
     plugin::{
         ExtractedLighting2dSettings, ExtractedPointLight2d, Lighing2dViewArrayBuffer,
-        Lighting2dCompositePipelineId, Lighting2dTexture,
+        Lighting2dCompositePipelineId,
     },
     types::PenetrationSettings,
 };
@@ -77,6 +77,7 @@ fn run_lighting_pass<'w>(
             view: &output.default_view,
             resolve_target: None,
             ops: Operations::default(),
+            depth_slice: None,
         })],
         ..default()
     });
@@ -137,6 +138,7 @@ fn run_penetration_pass<'w>(
             view: &output.default_view,
             resolve_target: None,
             ops: Operations::default(),
+            depth_slice: None,
         })],
         ..default()
     });
@@ -192,6 +194,7 @@ fn run_blur_pass<'w>(
             view: &output.default_view,
             resolve_target: None,
             ops: Operations::default(),
+            depth_slice: None,
         })],
         ..default()
     });
@@ -242,6 +245,7 @@ pub fn run_composite_pass<'w>(
             view: post_process.destination,
             resolve_target: None,
             ops: Operations::default(),
+            depth_slice: None,
         })],
         ..default()
     });
@@ -258,12 +262,11 @@ pub struct LightingLabel;
 pub struct LightingNode;
 impl ViewNode for LightingNode {
     type ViewQuery = (
+        Read<ExtractedView>,
         Read<ViewTarget>,
         Read<ExtractedCamera>,
         Read<ViewUniformOffset>,
         Read<Lighting2dCompositePipelineId>,
-        Read<VoronoiTexture>,
-        Read<Lighting2dTexture>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
         Read<ExtractedLighting2dSettings>,
     );
@@ -273,24 +276,30 @@ impl ViewNode for LightingNode {
         graph: &mut RenderGraphContext,
         render_context: &mut RenderContext<'w>,
         (
+            view,
             view_target,
             camera,
             view_uniform_offset,
             composite_pipeline_id,
-            voronoi_texture,
-            lighting_texture,
             settings_uniform_index,
             lighting_settings,
-        ): QueryItem<'w, Self::ViewQuery>,
+        ): QueryItem<'w, '_, Self::ViewQuery>,
         world: &'w World,
     ) -> Result<(), NodeRunError> {
-        let mut lighting_texture = lighting_texture.clone();
+        let mut lighting_texture = world
+            .resource::<VoronoiTextures>()
+            .get(&view.retained_view_entity)
+            .expect(&format!(
+                "Expected the voronoi texture for {:?} exist",
+                view.retained_view_entity.main_entity.id()
+            ))
+            .clone();
 
         run_lighting_pass(
             world,
             render_context,
             camera,
-            voronoi_texture.input(),
+            lighting_texture.input(),
             lighting_texture.output(),
             &graph.view_entity(),
             view_uniform_offset.offset,

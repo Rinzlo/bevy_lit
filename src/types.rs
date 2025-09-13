@@ -1,14 +1,11 @@
 use bevy::{
+    camera::visibility::{add_visibility_class, VisibilityClass},
     prelude::*,
     reflect::Reflect,
-    render::{
-        render_resource::ShaderType,
-        sync_world::SyncToRenderWorld,
-        view::{add_visibility_class, Visibility, VisibilityClass},
-    },
+    render::{render_resource::ShaderType, sync_world::SyncToRenderWorld},
     transform::components::Transform,
 };
-use bevy_voronoi::prelude::{VoronoiCamera, VoronoiMaterial};
+use bevy_voronoi::prelude::{VoronoiMaterial, VoronoiView};
 
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
@@ -81,7 +78,7 @@ impl Default for PenetrationSettings {
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
 #[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, AmbientLight2d, VoronoiCamera)]
+#[require(SyncToRenderWorld, AmbientLight2d, VoronoiView)]
 pub struct Lighting2dSettings {
     /// Raymarch settings
     pub raymarch: RaymarchSettings,
@@ -95,12 +92,6 @@ pub struct Lighting2dSettings {
     pub edge_intensity: f32,
     /// The blur radius to be applied to the light map. Defaults to 0
     pub blur: u32,
-}
-
-impl Lighting2dSettings {
-    pub fn create_voronoi_camera() -> VoronoiCamera {
-        VoronoiCamera::default()
-    }
 }
 
 impl Default for Lighting2dSettings {

@@ -1,5 +1,5 @@
 use bevy::color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, YELLOW_600};
-use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
+use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_lit::prelude::*;
@@ -18,6 +18,10 @@ fn main() {
             FpsOverlayPlugin {
                 config: FpsOverlayConfig {
                     enabled: true,
+                    frame_time_graph_config: FrameTimeGraphConfig {
+                        enabled: false,
+                        ..default()
+                    },
                     ..default()
                 },
             },

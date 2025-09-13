@@ -1,26 +1,26 @@
 use bevy::{
     asset::{embedded_asset, load_internal_asset},
+    camera::{
+        primitives::Aabb,
+        visibility::{NoFrustumCulling, VisibilitySystems},
+    },
     core_pipeline::core_2d::graph::{Core2d, Node2d},
     ecs::entity::{EntityHashMap, EntityHashSet},
     prelude::*,
     render::{
         extract_component::UniformComponentPlugin,
-        primitives::Aabb,
-        render_graph::{RenderGraphApp, ViewNodeRunner},
+        render_graph::{RenderGraphExt, ViewNodeRunner},
         render_resource::{
             CachedRenderPipelineId, GpuArrayBufferable, PipelineCache, ShaderType,
             SpecializedRenderPipelines, StorageBuffer,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::RenderEntity,
-        texture::{CachedTexture, TextureCache},
-        view::{
-            ExtractedView, NoFrustumCulling, RenderVisibleEntities, ViewTarget, VisibilitySystems,
-        },
-        Extract, Render, RenderApp, RenderSet,
+        view::{ExtractedView, RenderVisibleEntities},
+        Extract, Render, RenderApp, RenderSystems,
     },
 };
-use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiCamera, VoronoiMaterial};
+use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiMaterial, VoronoiView};
 
 use crate::{
     node::{LightingLabel, LightingNode},
@@ -30,7 +30,6 @@ use crate::{
     },
     prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
     types::{LightOccluder2d, PenetrationSettings, RaymarchSettings},
-    util::create_aux_texture,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.
@@ -88,10 +87,9 @@ impl Plugin for Lighting2dPlugin {
             .add_systems(
                 Render,
                 (
-                    (prepare_lighting2d_textures, prepare_composite_pipelines)
-                        .in_set(RenderSet::Prepare),
+                    prepare_composite_pipelines.in_set(RenderSystems::Prepare),
                     prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>
-                        .in_set(RenderSet::PrepareResources),
+                        .in_set(RenderSystems::PrepareResources),
                 ),
             )
             .add_render_graph_node::<ViewNodeRunner<LightingNode>>(Core2d, LightingLabel)
@@ -112,12 +110,12 @@ impl Plugin for Lighting2dPlugin {
 
 fn update_voronoi_camera(
     mut query: Query<
-        (&Lighting2dSettings, &mut VoronoiCamera),
+        (&Lighting2dSettings, &mut VoronoiView),
         Or<(Added<Lighting2dSettings>, Changed<Lighting2dSettings>)>,
     >,
 ) {
-    for (settings, mut voronoi_camera) in &mut query {
-        voronoi_camera.scale = settings.scale;
+    for (settings, mut voronoi_view) in &mut query {
+        voronoi_view.scale = settings.scale;
     }
 }
 
@@ -127,7 +125,7 @@ fn remove_voronoi_camera(
 ) {
     for entity in removed.read() {
         if let Ok(mut commands) = commands.get_entity(entity) {
-            commands.remove::<VoronoiCamera>();
+            commands.remove::<VoronoiView>();
         }
     }
 }
@@ -239,62 +237,6 @@ fn extract_point_lights(
                 falloff: point_light.falloff,
                 shadows_enabled: if point_light.shadows_enabled { 1 } else { 0 },
             });
-    }
-}
-
-#[derive(Clone, Component)]
-pub struct Lighting2dTexture {
-    flip: bool,
-    texture_a: CachedTexture,
-    texture_b: CachedTexture,
-}
-
-impl Lighting2dTexture {
-    pub fn input(&self) -> &CachedTexture {
-        if self.flip {
-            &self.texture_b
-        } else {
-            &self.texture_a
-        }
-    }
-
-    pub fn output(&self) -> &CachedTexture {
-        if self.flip {
-            &self.texture_a
-        } else {
-            &self.texture_b
-        }
-    }
-
-    pub fn flip(&mut self) {
-        self.flip = !self.flip;
-    }
-}
-
-fn prepare_lighting2d_textures(
-    mut commands: Commands,
-    view_query: Query<(Entity, &ViewTarget, &ExtractedLighting2dSettings)>,
-    render_device: Res<RenderDevice>,
-    mut texture_cache: ResMut<TextureCache>,
-) {
-    for (entity, view_target, settings) in &view_query {
-        commands.entity(entity).insert(Lighting2dTexture {
-            flip: false,
-            texture_a: create_aux_texture(
-                view_target,
-                &mut texture_cache,
-                &render_device,
-                "lighting2d_texture_a",
-                settings.scale,
-            ),
-            texture_b: create_aux_texture(
-                view_target,
-                &mut texture_cache,
-                &render_device,
-                "lighting2d_texture_b",
-                settings.scale,
-            ),
-        });
     }
 }
 

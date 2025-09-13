@@ -1,6 +1,6 @@
 use bevy::{
-    asset::weak_handle,
-    core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
+    asset::uuid_handle,
+    core_pipeline::FullscreenShader,
     prelude::*,
     render::{
         render_resource::{
@@ -17,15 +17,16 @@ use bevy::{
 
 use crate::plugin::{ExtractedLighting2dSettings, ExtractedPointLight2d, Lighting2dArray};
 
-pub const TYPES_SHADER: Handle<Shader> = weak_handle!("a7b3c9d2-e8f4-1a2b-9c3d-4e5f6789abcd");
+pub const TYPES_SHADER: Handle<Shader> = uuid_handle!("a7b3c9d2-e8f4-1a2b-9c3d-4e5f6789abcd");
 pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> =
-    weak_handle!("f3e8d7c2-b9a1-4f6e-8d2c-9b7a5e3f1d8c");
+    uuid_handle!("f3e8d7c2-b9a1-4f6e-8d2c-9b7a5e3f1d8c");
 
 fn create_pipeline(
     render_device: &RenderDevice,
     pipeline_cache: &PipelineCache,
     label: &'static str,
     shader: Handle<Shader>,
+    fullscreen_shader: &FullscreenShader,
     entries: &[BindGroupLayoutEntry],
 ) -> (BindGroupLayout, CachedRenderPipelineId) {
     let layout = render_device.create_bind_group_layout(
@@ -36,11 +37,11 @@ fn create_pipeline(
     let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
         label: Some((String::from(label) + "_pipeline").into()),
         layout: vec![layout.clone()],
-        vertex: fullscreen_shader_vertex_state(),
+        vertex: fullscreen_shader.to_vertex_state(),
         fragment: Some(FragmentState {
             shader,
             shader_defs: vec![],
-            entry_point: "fragment".into(),
+            entry_point: Some("fragment".into()),
             targets: vec![Some(ColorTargetState {
                 format: TextureFormat::Rgba16Float,
                 blend: None,
@@ -72,6 +73,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
         let render_device = world.resource::<RenderDevice>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let asset_server = world.resource::<AssetServer>();
+        let fullscreen_shader = world.resource::<FullscreenShader>();
 
         let lighting_shader = asset_server.load("embedded://bevy_lit/shaders/lighting.wgsl");
         let (lighting_layout, lighting_pipeline) = create_pipeline(
@@ -79,6 +81,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
             pipeline_cache,
             "lighting",
             lighting_shader,
+            fullscreen_shader,
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::FRAGMENT,
                 (
@@ -97,6 +100,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
             pipeline_cache,
             "penetration",
             penetration_shader,
+            fullscreen_shader,
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::FRAGMENT,
                 (
@@ -114,6 +118,7 @@ impl FromWorld for Lighting2dPrepassPipelines {
             pipeline_cache,
             "blur",
             blur_shader,
+            fullscreen_shader,
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::FRAGMENT,
                 (
@@ -139,13 +144,16 @@ impl FromWorld for Lighting2dPrepassPipelines {
 pub struct Lighting2dCompositePipeline {
     pub layout: BindGroupLayout,
     pub shader: Handle<Shader>,
+    pub fullscreen_shader: FullscreenShader,
 }
 
 impl FromWorld for Lighting2dCompositePipeline {
     fn from_world(world: &mut World) -> Self {
         let asset_shader = world.resource::<AssetServer>();
+        let fullscreen_shader = world.resource::<FullscreenShader>();
         Self {
             shader: asset_shader.load("embedded://bevy_lit/shaders/composite.wgsl"),
+            fullscreen_shader: fullscreen_shader.clone(),
             layout: world.resource::<RenderDevice>().create_bind_group_layout(
                 "composite_bind_group_layout",
                 &BindGroupLayoutEntries::sequential(
@@ -174,11 +182,11 @@ impl SpecializedRenderPipeline for Lighting2dCompositePipeline {
         RenderPipelineDescriptor {
             label: Some("composite_pipeline".into()),
             layout: vec![self.layout.clone()],
-            vertex: fullscreen_shader_vertex_state(),
+            vertex: self.fullscreen_shader.to_vertex_state(),
             fragment: Some(FragmentState {
                 shader: self.shader.clone(),
                 shader_defs: vec![],
-                entry_point: "fragment".into(),
+                entry_point: Some("fragment".into()),
                 targets: vec![Some(ColorTargetState {
                     format: if key.hdr {
                         ViewTarget::TEXTURE_FORMAT_HDR

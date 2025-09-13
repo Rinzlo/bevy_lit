@@ -72,6 +72,12 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 | `0.14` | `0.3`      |
 
 
+## Coming soon
+
+- Normal maps
+- Texture light sources
+- Occlusion layers
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request.

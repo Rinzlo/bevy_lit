@@ -1,6 +1,6 @@
 use bevy::{
     color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_700, YELLOW_600},
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig},
     prelude::*,
     window::PrimaryWindow,
 };
@@ -20,6 +20,10 @@ fn main() {
             FpsOverlayPlugin {
                 config: FpsOverlayConfig {
                     enabled: true,
+                    frame_time_graph_config: FrameTimeGraphConfig {
+                        enabled: false,
+                        ..default()
+                    },
                     ..default()
                 },
             },
@@ -47,9 +51,11 @@ fn setup(
     commands.spawn((
         Camera2d,
         Lighting2dSettings {
+            blur: 4,
+            edge_intensity: 8.0,
             raymarch: RaymarchSettings {
                 max_steps: 32,
-                jitter_contrib: 0.0,
+                jitter_contrib: 0.5,
                 sharpness: 10.,
             },
             ..default()
