@@ -52,10 +52,6 @@ impl Plugin for Lighting2dPlugin {
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
             Voronoi2dPlugin,
         ))
-        .register_type::<AmbientLight2d>()
-        .register_type::<PointLight2d>()
-        .register_type::<LightOccluder2d>()
-        .register_type::<Lighting2dSettings>()
         .add_systems(
             Update,
             (
