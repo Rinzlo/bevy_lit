@@ -1,5 +1,4 @@
 use bevy::{
-    asset::uuid_handle,
     core_pipeline::FullscreenShader,
     prelude::*,
     render::{
@@ -17,16 +16,12 @@ use bevy::{
 
 use crate::plugin::{ExtractedLighting2dSettings, ExtractedPointLight2d, Lighting2dArray};
 
-pub const TYPES_SHADER: Handle<Shader> = uuid_handle!("a7b3c9d2-e8f4-1a2b-9c3d-4e5f6789abcd");
-pub const VIEW_TRANSFORMATIONS_SHADER: Handle<Shader> =
-    uuid_handle!("f3e8d7c2-b9a1-4f6e-8d2c-9b7a5e3f1d8c");
-
 fn create_pipeline(
     render_device: &RenderDevice,
     pipeline_cache: &PipelineCache,
+    fullscreen_shader: &FullscreenShader,
     label: &'static str,
     shader: Handle<Shader>,
-    fullscreen_shader: &FullscreenShader,
     entries: &[BindGroupLayoutEntry],
 ) -> (BindGroupLayout, CachedRenderPipelineId) {
     let layout = render_device.create_bind_group_layout(
@@ -58,86 +53,82 @@ fn create_pipeline(
     (layout, pipeline)
 }
 
+pub fn init_lighting2d_pipelines(
+    mut commands: Commands,
+    render_device: Res<RenderDevice>,
+    pipeline_cache: Res<PipelineCache>,
+    asset_server: Res<AssetServer>,
+    fullscreen_shader: Res<FullscreenShader>,
+) {
+    let (lighting_layout, lighting_pipeline) = create_pipeline(
+        &render_device,
+        &pipeline_cache,
+        &fullscreen_shader,
+        "lighting",
+        asset_server.load("embedded://bevy_lit/shaders/lighting.wgsl"),
+        &BindGroupLayoutEntries::sequential(
+            ShaderStages::FRAGMENT,
+            (
+                uniform_buffer::<ViewUniform>(true),
+                uniform_buffer::<ExtractedLighting2dSettings>(true),
+                storage_buffer_read_only::<Lighting2dArray<ExtractedPointLight2d>>(false),
+                texture_2d(TextureSampleType::Float { filterable: true }),
+                sampler(SamplerBindingType::Filtering),
+            ),
+        ),
+    );
+
+    let (penetration_layout, penetration_pipeline) = create_pipeline(
+        &render_device,
+        &pipeline_cache,
+        &fullscreen_shader,
+        "penetration",
+        asset_server.load("embedded://bevy_lit/shaders/penetration.wgsl"),
+        &BindGroupLayoutEntries::sequential(
+            ShaderStages::FRAGMENT,
+            (
+                uniform_buffer::<ViewUniform>(true),
+                uniform_buffer::<ExtractedLighting2dSettings>(true),
+                texture_2d(TextureSampleType::Float { filterable: true }),
+                sampler(SamplerBindingType::Filtering),
+            ),
+        ),
+    );
+
+    let (blur_layout, blur_pipeline) = create_pipeline(
+        &render_device,
+        &pipeline_cache,
+        &fullscreen_shader,
+        "blur",
+        asset_server.load("embedded://bevy_lit/shaders/blur.wgsl"),
+        &BindGroupLayoutEntries::sequential(
+            ShaderStages::FRAGMENT,
+            (
+                uniform_buffer::<ExtractedLighting2dSettings>(true),
+                uniform_buffer::<IVec2>(false),
+                texture_2d(TextureSampleType::Float { filterable: true }),
+            ),
+        ),
+    );
+
+    commands.insert_resource(Lighting2dPipelines {
+        lighting_layout,
+        lighting_pipeline,
+        penetration_layout,
+        penetration_pipeline,
+        blur_layout,
+        blur_pipeline,
+    });
+}
+
 #[derive(Resource)]
-pub struct Lighting2dPrepassPipelines {
+pub struct Lighting2dPipelines {
     pub lighting_layout: BindGroupLayout,
     pub lighting_pipeline: CachedRenderPipelineId,
     pub penetration_layout: BindGroupLayout,
     pub penetration_pipeline: CachedRenderPipelineId,
     pub blur_layout: BindGroupLayout,
     pub blur_pipeline: CachedRenderPipelineId,
-}
-
-impl FromWorld for Lighting2dPrepassPipelines {
-    fn from_world(world: &mut World) -> Self {
-        let render_device = world.resource::<RenderDevice>();
-        let pipeline_cache = world.resource::<PipelineCache>();
-        let asset_server = world.resource::<AssetServer>();
-        let fullscreen_shader = world.resource::<FullscreenShader>();
-
-        let lighting_shader = asset_server.load("embedded://bevy_lit/shaders/lighting.wgsl");
-        let (lighting_layout, lighting_pipeline) = create_pipeline(
-            render_device,
-            pipeline_cache,
-            "lighting",
-            lighting_shader,
-            fullscreen_shader,
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    uniform_buffer::<ViewUniform>(true),
-                    uniform_buffer::<ExtractedLighting2dSettings>(true),
-                    storage_buffer_read_only::<Lighting2dArray<ExtractedPointLight2d>>(false),
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                ),
-            ),
-        );
-
-        let penetration_shader = asset_server.load("embedded://bevy_lit/shaders/penetration.wgsl");
-        let (penetration_layout, penetration_pipeline) = create_pipeline(
-            render_device,
-            pipeline_cache,
-            "penetration",
-            penetration_shader,
-            fullscreen_shader,
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    uniform_buffer::<ViewUniform>(true),
-                    uniform_buffer::<ExtractedLighting2dSettings>(true),
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                ),
-            ),
-        );
-
-        let blur_shader = asset_server.load("embedded://bevy_lit/shaders/blur.wgsl");
-        let (blur_layout, blur_pipeline) = create_pipeline(
-            render_device,
-            pipeline_cache,
-            "blur",
-            blur_shader,
-            fullscreen_shader,
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    uniform_buffer::<ExtractedLighting2dSettings>(true),
-                    uniform_buffer::<IVec2>(false),
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                ),
-            ),
-        );
-
-        Self {
-            lighting_layout,
-            lighting_pipeline,
-            penetration_layout,
-            penetration_pipeline,
-            blur_layout,
-            blur_pipeline,
-        }
-    }
 }
 
 #[derive(Resource)]
@@ -147,27 +138,28 @@ pub struct Lighting2dCompositePipeline {
     pub fullscreen_shader: FullscreenShader,
 }
 
-impl FromWorld for Lighting2dCompositePipeline {
-    fn from_world(world: &mut World) -> Self {
-        let asset_shader = world.resource::<AssetServer>();
-        let fullscreen_shader = world.resource::<FullscreenShader>();
-        Self {
-            shader: asset_shader.load("embedded://bevy_lit/shaders/composite.wgsl"),
-            fullscreen_shader: fullscreen_shader.clone(),
-            layout: world.resource::<RenderDevice>().create_bind_group_layout(
-                "composite_bind_group_layout",
-                &BindGroupLayoutEntries::sequential(
-                    ShaderStages::FRAGMENT,
-                    (
-                        uniform_buffer::<ExtractedLighting2dSettings>(true),
-                        texture_2d(TextureSampleType::Float { filterable: true }),
-                        texture_2d(TextureSampleType::Float { filterable: true }),
-                        sampler(SamplerBindingType::Filtering),
-                    ),
+pub fn init_lighting2d_composite_pipeline(
+    mut commands: Commands,
+    render_device: Res<RenderDevice>,
+    asset_server: Res<AssetServer>,
+    fullscreen_shader: Res<FullscreenShader>,
+) {
+    commands.insert_resource(Lighting2dCompositePipeline {
+        shader: asset_server.load("embedded://bevy_lit/shaders/composite.wgsl"),
+        fullscreen_shader: fullscreen_shader.clone(),
+        layout: render_device.create_bind_group_layout(
+            "composite_bind_group_layout",
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    uniform_buffer::<ExtractedLighting2dSettings>(true),
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
                 ),
             ),
-        }
-    }
+        ),
+    });
 }
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy)]

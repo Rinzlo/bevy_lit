@@ -17,7 +17,7 @@ use bevy::{
 use bevy_voronoi::prelude::VoronoiTextures;
 
 use crate::{
-    pipeline::{Lighting2dCompositePipeline, Lighting2dPrepassPipelines},
+    pipeline::{Lighting2dCompositePipeline, Lighting2dPipelines},
     plugin::{
         ExtractedLighting2dSettings, ExtractedPointLight2d, Lighing2dViewArrayBuffer,
         Lighting2dCompositePipelineId,
@@ -35,7 +35,7 @@ fn run_lighting_pass<'w>(
     view_uniform_offset: u32,
     settings_uniform_offset: u32,
 ) {
-    let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
+    let prepass_pipelines = world.resource::<Lighting2dPipelines>();
     let pipeline_cache = world.resource::<PipelineCache>();
 
     let (Some(pipeline), Some(view_uniforms), Some(lighting_settings_uniforms), Some(point_lights)) = (
@@ -104,7 +104,7 @@ fn run_penetration_pass<'w>(
     view_uniform_offset: u32,
     settings_uniform_offset: u32,
 ) {
-    let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
+    let prepass_pipelines = world.resource::<Lighting2dPipelines>();
     let pipeline_cache = world.resource::<PipelineCache>();
 
     let (Some(pipeline), Some(view_uniforms), Some(lighting_settings_uniforms)) = (
@@ -164,7 +164,7 @@ fn run_blur_pass<'w>(
     settings_uniform_offset: u32,
     direction: IVec2,
 ) {
-    let prepass_pipelines = world.resource::<Lighting2dPrepassPipelines>();
+    let prepass_pipelines = world.resource::<Lighting2dPipelines>();
     let pipeline_cache = world.resource::<PipelineCache>();
 
     let mut direction = UniformBuffer::from(direction);

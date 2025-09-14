@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{embedded_asset, load_internal_asset},
+    asset::embedded_asset,
     camera::{
         primitives::Aabb,
         visibility::{NoFrustumCulling, VisibilitySystems},
@@ -17,16 +17,17 @@ use bevy::{
         renderer::{RenderDevice, RenderQueue},
         sync_world::RenderEntity,
         view::{ExtractedView, RenderVisibleEntities},
-        Extract, Render, RenderApp, RenderSystems,
+        Extract, Render, RenderApp, RenderStartup, RenderSystems,
     },
+    shader::load_shader_library,
 };
 use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiMaterial, VoronoiView};
 
 use crate::{
     node::{LightingLabel, LightingNode},
     pipeline::{
-        Lighting2dCompositePipeline, Lighting2dPipelineKey, Lighting2dPrepassPipelines,
-        TYPES_SHADER, VIEW_TRANSFORMATIONS_SHADER,
+        init_lighting2d_composite_pipeline, init_lighting2d_pipelines, Lighting2dCompositePipeline,
+        Lighting2dPipelineKey,
     },
     prelude::{AmbientLight2d, Lighting2dSettings, PointLight2d},
     types::{LightOccluder2d, PenetrationSettings, RaymarchSettings},
@@ -40,13 +41,8 @@ pub struct Lighting2dPlugin;
 
 impl Plugin for Lighting2dPlugin {
     fn build(&self, app: &mut App) {
-        load_internal_asset!(app, TYPES_SHADER, "shaders/types.wgsl", Shader::from_wgsl);
-        load_internal_asset!(
-            app,
-            VIEW_TRANSFORMATIONS_SHADER,
-            "shaders/view_transformations.wgsl",
-            Shader::from_wgsl
-        );
+        load_shader_library!(app, "shaders/types.wgsl");
+        load_shader_library!(app, "shaders/view_transformations.wgsl");
         embedded_asset!(app, "shaders/lighting.wgsl");
         embedded_asset!(app, "shaders/penetration.wgsl");
         embedded_asset!(app, "shaders/blur.wgsl");
@@ -79,10 +75,18 @@ impl Plugin for Lighting2dPlugin {
         };
 
         render_app
+            .init_resource::<Lighing2dViewArrayBuffer<ExtractedPointLight2d>>()
             .init_resource::<SpecializedRenderPipelines<Lighting2dCompositePipeline>>()
             .add_systems(
                 ExtractSchedule,
                 (extract_lighting_settings, extract_point_lights),
+            )
+            .add_systems(
+                RenderStartup,
+                (
+                    init_lighting2d_pipelines,
+                    init_lighting2d_composite_pipeline,
+                ),
             )
             .add_systems(
                 Render,
@@ -94,17 +98,6 @@ impl Plugin for Lighting2dPlugin {
             )
             .add_render_graph_node::<ViewNodeRunner<LightingNode>>(Core2d, LightingLabel)
             .add_render_graph_edges(Core2d, (Node2d::EndMainPass, LightingLabel));
-    }
-
-    fn finish(&self, app: &mut App) {
-        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
-            return;
-        };
-
-        render_app
-            .insert_resource(Lighing2dViewArrayBuffer::<ExtractedPointLight2d>::default())
-            .init_resource::<Lighting2dPrepassPipelines>()
-            .init_resource::<Lighting2dCompositePipeline>();
     }
 }
 
