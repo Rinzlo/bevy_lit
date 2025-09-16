@@ -5,9 +5,9 @@ use bevy::{
         render_resource::{
             binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
             BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, FragmentState, PipelineCache, RenderPipelineDescriptor,
-            SamplerBindingType, ShaderStages, SpecializedRenderPipeline, TextureFormat,
-            TextureSampleType,
+            ColorTargetState, ColorWrites, FragmentState, MultisampleState, PipelineCache,
+            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, SpecializedRenderPipeline,
+            TextureFormat, TextureSampleType,
         },
         renderer::RenderDevice,
         view::{ViewTarget, ViewUniform},
@@ -165,6 +165,7 @@ pub fn init_lighting2d_composite_pipeline(
 #[derive(Eq, PartialEq, Hash, Clone, Copy)]
 pub struct Lighting2dPipelineKey {
     pub hdr: bool,
+    pub msaa_samples: u32,
 }
 
 impl SpecializedRenderPipeline for Lighting2dCompositePipeline {

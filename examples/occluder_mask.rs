@@ -99,12 +99,12 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
 
     commands.spawn((
         CursorLight,
-        PointLight2d {
+        Light2d::Point {
             intensity: 2.0,
             radius: 400.0,
             falloff: 10.0,
             color: Color::from(YELLOW_600),
-            ..default()
+            shadows_enabled: false,
         },
     ));
 }

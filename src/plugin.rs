@@ -24,6 +24,7 @@ use bevy::{
 use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiMaterial, VoronoiView};
 
 use crate::{
+    lighting_2d::Light2dPlugin,
     node::{LightingLabel, LightingNode},
     pipeline::{
         init_lighting2d_composite_pipeline, init_lighting2d_pipelines, Lighting2dCompositePipeline,
@@ -51,6 +52,7 @@ impl Plugin for Lighting2dPlugin {
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
             Voronoi2dPlugin,
+            Light2dPlugin,
         ))
         .add_systems(
             Update,
@@ -91,9 +93,9 @@ impl Plugin for Lighting2dPlugin {
                     prepare_lighting2d_view_array_buffers::<ExtractedPointLight2d, PointLight2d>
                         .in_set(RenderSystems::PrepareResources),
                 ),
-            )
-            .add_render_graph_node::<ViewNodeRunner<LightingNode>>(Core2d, LightingLabel)
-            .add_render_graph_edges(Core2d, (Node2d::EndMainPass, LightingLabel));
+            );
+        // .add_render_graph_node::<ViewNodeRunner<LightingNode>>(Core2d, LightingLabel)
+        // .add_render_graph_edges(Core2d, (Node2d::EndMainPass, LightingLabel));
     }
 }
 
@@ -229,7 +231,7 @@ fn extract_point_lights(
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Deref)]
 pub struct Lighting2dCompositePipelineId(pub CachedRenderPipelineId);
 
 fn prepare_composite_pipelines(
@@ -237,16 +239,19 @@ fn prepare_composite_pipelines(
     pipeline_cache: Res<PipelineCache>,
     mut composite_pipelines: ResMut<SpecializedRenderPipelines<Lighting2dCompositePipeline>>,
     composite_pipeline: Res<Lighting2dCompositePipeline>,
-    views_query: Query<(Entity, &ExtractedView), With<ExtractedLighting2dSettings>>,
+    views_query: Query<(Entity, &ExtractedView, &Msaa), With<ExtractedLighting2dSettings>>,
 ) {
-    for (entity, view) in &views_query {
+    for (entity, view, msaa) in &views_query {
         commands
             .entity(entity)
             .insert(Lighting2dCompositePipelineId(
                 composite_pipelines.specialize(
                     &pipeline_cache,
                     &composite_pipeline,
-                    Lighting2dPipelineKey { hdr: view.hdr },
+                    Lighting2dPipelineKey {
+                        hdr: view.hdr,
+                        msaa_samples: msaa.samples(),
+                    },
                 ),
             ));
     }

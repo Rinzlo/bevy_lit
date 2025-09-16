@@ -25,7 +25,7 @@ use crate::{
     types::PenetrationSettings,
 };
 
-fn run_lighting_pass<'w>(
+pub fn run_lighting_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
     camera: &ExtractedCamera,
@@ -95,7 +95,7 @@ fn run_lighting_pass<'w>(
     pass.draw(0..3, 0..1);
 }
 
-fn run_penetration_pass<'w>(
+pub fn run_penetration_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
     camera: &ExtractedCamera,
@@ -156,7 +156,7 @@ fn run_penetration_pass<'w>(
     pass.draw(0..3, 0..1);
 }
 
-fn run_blur_pass<'w>(
+pub fn run_blur_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
     input: &CachedTexture,
