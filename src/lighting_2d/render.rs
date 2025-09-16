@@ -23,12 +23,13 @@ use bevy::{
         },
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BufferUsages,
-            ColorTargetState, ColorWrites, Extent3d, FragmentState, IndexFormat, PipelineCache,
-            RawBufferVec, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor,
-            ShaderStages, ShaderType, SpecializedRenderPipeline, SpecializedRenderPipelines,
-            TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
-            UniformBuffer, VertexState, VertexStepMode,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendComponent,
+            BlendFactor, BlendOperation, BlendState, BufferUsages, ColorTargetState, ColorWrites,
+            Extent3d, FragmentState, IndexFormat, PipelineCache, RawBufferVec,
+            RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
+            ShaderType, SpecializedRenderPipeline, SpecializedRenderPipelines, TextureDescriptor,
+            TextureDimension, TextureFormat, TextureSampleType, TextureUsages, UniformBuffer,
+            VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, RenderEntity},
@@ -143,7 +144,18 @@ impl SpecializedRenderPipeline for Light2dPipeline {
                     } else {
                         TextureFormat::bevy_default()
                     },
-                    blend: None,
+                    blend: Some(BlendState {
+                        color: BlendComponent {
+                            src_factor: BlendFactor::SrcAlpha,
+                            dst_factor: BlendFactor::One,
+                            operation: BlendOperation::Add,
+                        },
+                        alpha: BlendComponent {
+                            src_factor: BlendFactor::One,
+                            dst_factor: BlendFactor::One,
+                            operation: BlendOperation::Add,
+                        },
+                    }),
                     write_mask: ColorWrites::ALL,
                 })],
             }),

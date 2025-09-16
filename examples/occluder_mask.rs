@@ -73,26 +73,21 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
     commands
         .spawn((MovingLights, Transform::default(), Visibility::default()))
         .with_children(|builder| {
-            let point_light = PointLight2d {
+            let point_light = Light2d::Point {
                 intensity: 2.0,
                 radius: 1100.0,
                 falloff: 3.0,
-                ..default()
+                color: Color::from(BLUE_600),
+                shadows_enabled: true,
             };
 
             builder.spawn((
-                PointLight2d {
-                    color: Color::from(BLUE_600),
-                    ..point_light
-                },
+                point_light.clone(),
                 Transform::from_xyz(-X_EXTENT + 50. / 2., 0.0, 0.0),
             ));
 
             builder.spawn((
-                PointLight2d {
-                    color: Color::from(BLUE_600),
-                    ..point_light
-                },
+                point_light,
                 Transform::from_xyz(X_EXTENT + 50. / 2., 0.0, 0.0),
             ));
         });
@@ -104,7 +99,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
             radius: 400.0,
             falloff: 10.0,
             color: Color::from(YELLOW_600),
-            shadows_enabled: false,
+            shadows_enabled: true,
         },
     ));
 }
