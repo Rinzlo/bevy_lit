@@ -1,4 +1,5 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
+#import bevy_render::view::View
 #import bevy_lit::{
     types::Lighting2dSettings,
     view_transformations::{frag_to_world, world_to_uv},
@@ -37,7 +38,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
             let distance = t * p.max;
             let offset = direction * distance;
             let sample_pos = pos + offset;
-            let uv = world_to_uv(vec3(sample_pos, 0.0));
+            let uv = world_to_uv(vec3(sample_pos, 0.0), view);
             let sample = textureSample(lighting_texture, lighting_sampler, uv);
 
             // Smooth falloff weight
