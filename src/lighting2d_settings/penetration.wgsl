@@ -1,19 +1,17 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
     types::Lighting2dSettings,
-    view_transformations::{
-        frag_to_world,
-        world_to_uv,
-    },
+    view_transformations::{frag_to_world, world_to_uv},
 }
 
+@group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
 @group(0) @binding(2) var lighting_texture: texture_2d<f32>;
 @group(0) @binding(3) var lighting_sampler: sampler;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let pos = frag_to_world(in.position / settings.scale).xy;
+    let pos = frag_to_world(in.position / settings.scale, view).xy;
     let current = textureSample(lighting_texture, lighting_sampler, in.uv);
     let sdf = current.a;
     let p = settings.penetration;
