@@ -57,7 +57,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
     commands.spawn((
         Mesh2d(meshes.add(Circle::new(50.0))),
-        LightOccluder2d::default()),
+        LightOccluder2d::default(),
         Transform::from_xyz(0.0, 200.0, 0.0)
     ));
 }

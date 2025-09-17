@@ -45,12 +45,14 @@ pub struct Lighting2dPlugin;
 
 impl Plugin for Lighting2dPlugin {
     fn build(&self, app: &mut App) {
-        load_shader_library!(app, "shaders/types.wgsl");
-        load_shader_library!(app, "shaders/view_transformations.wgsl");
-        embedded_asset!(app, "shaders/lighting.wgsl");
-        embedded_asset!(app, "shaders/penetration.wgsl");
-        embedded_asset!(app, "shaders/blur.wgsl");
-        embedded_asset!(app, "shaders/composite.wgsl");
+        load_shader_library!(app, "types.wgsl");
+        load_shader_library!(app, "view_transformations.wgsl");
+        load_shader_library!(app, "light2d/light2d_vertex_output.wgsl");
+        load_shader_library!(app, "light2d/light2d_view_bindings.wgsl");
+
+        embedded_asset!(app, "post_process/penetration.wgsl");
+        embedded_asset!(app, "post_process/blur.wgsl");
+        embedded_asset!(app, "post_process/composite.wgsl");
         embedded_asset!(app, "light2d/light2d.wgsl");
 
         app.add_plugins((

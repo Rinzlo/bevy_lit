@@ -32,14 +32,7 @@ struct LightOccluder2d {
 
 struct PointLight2d {
     center: vec2<f32>,
-    color: vec4<f32>,
-    falloff: f32,
-    intensity: f32,
     radius: f32,
+    falloff: f32,
     shadows_enabled: u32,
-}
-
-struct PointLight2dBuffer {
-    count: u32,
-    data: array<PointLight2d>,
 }

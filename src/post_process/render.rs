@@ -1,5 +1,5 @@
 use bevy::{
-    asset::Handle,
+    asset::{load_embedded_asset, Handle},
     core_pipeline::FullscreenShader,
     prelude::*,
     render::{
@@ -79,14 +79,12 @@ pub fn init_post_process_pipelines(
         &pipeline_cache,
         &fullscreen_shader,
         "penetration",
-        asset_server.load("embedded://bevy_lit/shaders/penetration.wgsl"),
+        load_embedded_asset!(asset_server.as_ref(), "penetration.wgsl"),
         &BindGroupLayoutEntries::sequential(
             ShaderStages::FRAGMENT,
             (
                 uniform_buffer::<ViewUniform>(true),
                 uniform_buffer::<ExtractedLighting2dSettings>(true),
-                // TODO: remember this: use the voronoi texture instead of the lighting one
-                // voronoi texture
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 sampler(SamplerBindingType::Filtering),
             ),
@@ -98,7 +96,7 @@ pub fn init_post_process_pipelines(
         &pipeline_cache,
         &fullscreen_shader,
         "blur",
-        asset_server.load("embedded://bevy_lit/shaders/blur.wgsl"),
+        load_embedded_asset!(asset_server.as_ref(), "blur.wgsl"),
         &BindGroupLayoutEntries::sequential(
             ShaderStages::FRAGMENT,
             (
@@ -131,7 +129,7 @@ pub fn init_lighting2d_composite_pipeline(
     fullscreen_shader: Res<FullscreenShader>,
 ) {
     commands.insert_resource(Lighting2dCompositePipeline {
-        shader: asset_server.load("embedded://bevy_lit/shaders/composite.wgsl"),
+        shader: load_embedded_asset!(asset_server.as_ref(), "composite.wgsl"),
         fullscreen_shader: fullscreen_shader.clone(),
         layout: render_device.create_bind_group_layout(
             "composite_bind_group_layout",

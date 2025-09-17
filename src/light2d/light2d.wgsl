@@ -4,6 +4,9 @@
 }
 #import bevy_lit::{
     view_transformations::{frag_to_world, world_to_uv},
+    light2d_vertex_output::VertexOutput,
+    light2d_view_bindings::{view, settings, voronoi_texture, voronoi_sampler},
+    types::PointLight2d,
 }
 
 struct VertexInput {
@@ -16,42 +19,6 @@ struct VertexInput {
     @location(2) i_model_transpose_col2: vec4<f32>,
     @location(3) i_color: vec4<f32>,
 }
-
-struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-    @location(1) @interpolate(flat) color: vec4<f32>,
-};
-
-struct RaymarchSettings {
-    max_steps: u32,
-    jitter: f32,
-    sharpness: f32,
-    _pad: u32
-}
-
-struct PenetrationSettings {
-    max: f32,
-    intensity: f32,
-    falloff: f32,
-    directions: u32,
-    steps: u32,
-}
-
-struct Lighting2dSettings {
-    raymarch: RaymarchSettings,
-    penetration: PenetrationSettings,
-    ambient_light: vec4<f32>,
-    scale: f32,
-    tint_occluders: u32,
-    edge_intensity: f32,
-    blur: i32,
-}
-
-@group(0) @binding(0) var<uniform> view: View;
-@group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
-@group(0) @binding(2) var voronoi_texture: texture_2d<f32>;
-@group(0) @binding(3) var voronoi_sampler: sampler;
 
 @vertex
 fn vertex(in: VertexInput) -> VertexOutput {
@@ -72,13 +39,6 @@ fn vertex(in: VertexInput) -> VertexOutput {
     out.color = in.i_color;
 
     return out;
-}
-
-struct PointLight2d {
-    center: vec2<f32>,
-    radius: f32,
-    falloff: f32,
-    shadows_enabled: u32,
 }
 
 @group(1) @binding(0) var<uniform> light: PointLight2d;
