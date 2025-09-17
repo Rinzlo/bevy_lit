@@ -18,7 +18,7 @@ use bevy::{
     shader::Shader,
 };
 
-use crate::post_process::lighting_settings_2d::{
+use crate::lighting2d_settings::{
     AmbientLight2d, Lighting2dSettings, PenetrationSettings, RaymarchSettings,
 };
 

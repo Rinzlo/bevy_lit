@@ -26,14 +26,14 @@ use crate::{
             Light2dPipeline, LightingTextures, RenderLights2dInstances,
         },
     },
-    post_process::{
-        lighting_settings_2d::Lighting2dSettings,
+    lighting2d_settings::{
         node::{Light2dPostProcessDrawNode, Light2dPostProcessPassLabel},
         render::{
             extract_lighting_settings, init_lighting2d_composite_pipeline,
             init_post_process_pipelines, prepare_composite_pipelines, ExtractedLighting2dSettings,
             Lighting2dCompositePipeline,
         },
+        Lighting2dSettings,
     },
 };
 
@@ -50,9 +50,9 @@ impl Plugin for Lighting2dPlugin {
         load_shader_library!(app, "light2d/light2d_vertex_output.wgsl");
         load_shader_library!(app, "light2d/light2d_view_bindings.wgsl");
 
-        embedded_asset!(app, "post_process/penetration.wgsl");
-        embedded_asset!(app, "post_process/blur.wgsl");
-        embedded_asset!(app, "post_process/composite.wgsl");
+        embedded_asset!(app, "lighting2d_settings/penetration.wgsl");
+        embedded_asset!(app, "lighting2d_settings/blur.wgsl");
+        embedded_asset!(app, "lighting2d_settings/composite.wgsl");
         embedded_asset!(app, "light2d/light2d.wgsl");
 
         app.add_plugins((

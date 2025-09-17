@@ -16,12 +16,12 @@ use bevy::{
 
 use crate::{
     light2d::render::{LightingTexture, LightingTextures},
-    post_process::{
-        lighting_settings_2d::PenetrationSettings,
+    lighting2d_settings::{
         render::{
             ExtractedLighting2dSettings, Lighting2dCompositePipeline,
             Lighting2dCompositePipelineId, Lighting2dPostProcessPipelines,
         },
+        PenetrationSettings,
     },
 };
 

@@ -46,8 +46,8 @@ use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
 
 use crate::{
-    light2d::{light2d::Light2d, node::Light2dPhase},
-    post_process::render::ExtractedLighting2dSettings,
+    light2d::{node::Light2dPhase, Light2d},
+    lighting2d_settings::render::ExtractedLighting2dSettings,
 };
 
 #[derive(Resource)]

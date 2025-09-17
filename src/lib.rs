@@ -1,9 +1,11 @@
 mod light2d;
+mod lighting2d_settings;
 mod plugin;
-mod post_process;
 
 pub mod prelude {
-    pub use crate::light2d::light2d::*;
-    pub use crate::plugin::*;
-    pub use crate::post_process::lighting_settings_2d::*;
+    pub use crate::light2d::Light2d;
+    pub use crate::lighting2d_settings::{
+        AmbientLight2d, Lighting2dSettings, PenetrationSettings, RaymarchSettings,
+    };
+    pub use crate::plugin::{LightOccluder2d, Lighting2dPlugin};
 }

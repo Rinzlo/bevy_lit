@@ -22,9 +22,7 @@ use bevy::{
     },
 };
 
-use crate::{
-    light2d::render::LightingTextures, post_process::lighting_settings_2d::Lighting2dSettings,
-};
+use crate::{light2d::render::LightingTextures, lighting2d_settings::Lighting2dSettings};
 
 pub struct Light2dPhase {
     pub sort_key: FloatOrd,
