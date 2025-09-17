@@ -17,8 +17,8 @@ use bevy::{
 use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiMaterial, VoronoiView};
 
 use crate::{
-    light_2d::{
-        node::{extract_light_2d_phases, Light2dDrawNode, Light2dDrawPassLabel, Light2dPhase},
+    light2d::{
+        node::{extract_light2d_phases, Light2dDrawNode, Light2dDrawPassLabel, Light2dPhase},
         render::{
             extract_light2d_instances, init_light2d_pipeline, prepare_light2d_buffers,
             prepare_light2d_view_bind_groups, prepare_lighting_textures, queue_light2d_instances,
@@ -51,7 +51,7 @@ impl Plugin for Lighting2dPlugin {
         embedded_asset!(app, "shaders/penetration.wgsl");
         embedded_asset!(app, "shaders/blur.wgsl");
         embedded_asset!(app, "shaders/composite.wgsl");
-        embedded_asset!(app, "lighting_2d/light_2d.wgsl");
+        embedded_asset!(app, "light2d/light2d.wgsl");
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),
@@ -85,7 +85,7 @@ impl Plugin for Lighting2dPlugin {
                 ExtractSchedule,
                 (
                     extract_lighting_settings,
-                    extract_light_2d_phases.after(extract_core_2d_camera_phases),
+                    extract_light2d_phases.after(extract_core_2d_camera_phases),
                     extract_light2d_instances,
                 ),
             )

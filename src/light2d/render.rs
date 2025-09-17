@@ -46,7 +46,7 @@ use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
 
 use crate::{
-    light_2d::{light_2d::Light2d, node::Light2dPhase},
+    light2d::{light2d::Light2d, node::Light2dPhase},
     post_process::render::ExtractedLighting2dSettings,
 };
 
@@ -87,7 +87,7 @@ pub fn init_light2d_pipeline(
     );
 
     commands.insert_resource(Light2dPipeline {
-        shader: load_embedded_asset!(asset_server.as_ref(), "light_2d.wgsl"),
+        shader: load_embedded_asset!(asset_server.as_ref(), "light2d.wgsl"),
         view_layout,
         point_material_layout: point_layout,
     });
@@ -518,7 +518,7 @@ pub fn prepare_light2d_buffers(
                     buffer.write_buffer(&render_device, &render_queue);
 
                     let light_bind_group = render_device.create_bind_group(
-                        "point_light_2d_bind_group",
+                        "point_light2d_bind_group",
                         &light2d_pipeline.point_material_layout,
                         &BindGroupEntries::single(buffer.binding().unwrap()),
                     );

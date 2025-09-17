@@ -23,7 +23,7 @@ use bevy::{
 };
 
 use crate::{
-    light_2d::render::LightingTextures, post_process::lighting_settings_2d::Lighting2dSettings,
+    light2d::render::LightingTextures, post_process::lighting_settings_2d::Lighting2dSettings,
 };
 
 pub struct Light2dPhase {
@@ -94,7 +94,7 @@ impl CachedRenderPipelinePhaseItem for Light2dPhase {
     }
 }
 
-pub fn extract_light_2d_phases(
+pub fn extract_light2d_phases(
     cameras: Extract<Query<(Entity, &Camera), (With<Camera2d>, With<Lighting2dSettings>)>>,
     mut light2d_phases: ResMut<ViewSortedRenderPhases<Light2dPhase>>,
     mut live_entities: Local<HashSet<RetainedViewEntity>>,
