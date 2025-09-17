@@ -23,7 +23,7 @@ use bevy::{
 };
 
 use crate::{
-    lighting_2d::render::LightingTextures, post_process::lighting_settings_2d::Lighting2dSettings,
+    light_2d::render::LightingTextures, post_process::lighting_settings_2d::Lighting2dSettings,
 };
 
 pub struct Light2dPhase {

@@ -17,7 +17,7 @@ use bevy::{
 use bevy_voronoi::prelude::{Voronoi2dPlugin, VoronoiMaterial, VoronoiView};
 
 use crate::{
-    lighting_2d::{
+    light_2d::{
         node::{extract_light_2d_phases, Light2dDrawNode, Light2dDrawPassLabel, Light2dPhase},
         render::{
             extract_light2d_instances, init_light2d_pipeline, prepare_light2d_buffers,

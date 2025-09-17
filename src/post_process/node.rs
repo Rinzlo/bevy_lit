@@ -15,7 +15,7 @@ use bevy::{
 };
 
 use crate::{
-    lighting_2d::render::{LightingTexture, LightingTextures},
+    light_2d::render::{LightingTexture, LightingTextures},
     post_process::{
         lighting_settings_2d::PenetrationSettings,
         render::{
