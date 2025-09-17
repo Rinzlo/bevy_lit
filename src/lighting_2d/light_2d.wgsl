@@ -111,7 +111,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         light_contrib += light_contrib * edge_intensity * 1.0;
     }
 
-    return vec4<f32>(light_contrib, 1.0);
+    return vec4<f32>(light_contrib, sdf);
 }
 
 fn get_distance(pos: vec2<f32>) -> f32 {

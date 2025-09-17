@@ -47,7 +47,7 @@ use fixedbitset::FixedBitSet;
 
 use crate::{
     lighting_2d::{light_2d::Light2d, node::Light2dPhase},
-    plugin::ExtractedLighting2dSettings,
+    post_process::render::ExtractedLighting2dSettings,
 };
 
 #[derive(Resource)]
@@ -146,7 +146,7 @@ impl SpecializedRenderPipeline for Light2dPipeline {
                     },
                     blend: Some(BlendState {
                         color: BlendComponent {
-                            src_factor: BlendFactor::SrcAlpha,
+                            src_factor: BlendFactor::One,
                             dst_factor: BlendFactor::One,
                             operation: BlendOperation::Add,
                         },

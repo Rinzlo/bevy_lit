@@ -7,7 +7,6 @@ use bevy::{
     prelude::*,
     render::{
         camera::ExtractedCamera,
-        extract_component::DynamicUniformIndex,
         render_graph::{NodeRunError, RenderGraphContext, RenderLabel, ViewNode},
         render_phase::{
             CachedRenderPipelinePhaseItem, DrawFunctionId, PhaseItem, PhaseItemExtraIndex,
@@ -18,16 +17,13 @@ use bevy::{
         },
         renderer::RenderContext,
         sync_world::MainEntity,
-        view::{ExtractedView, RetainedViewEntity, ViewTarget, ViewUniformOffset},
+        view::{ExtractedView, RetainedViewEntity},
         Extract,
     },
 };
 
 use crate::{
-    lighting_2d::render::LightingTextures,
-    node::{run_blur_pass, run_composite_pass, run_penetration_pass},
-    plugin::{ExtractedLighting2dSettings, Lighting2dCompositePipelineId},
-    types::{Lighting2dSettings, PenetrationSettings},
+    lighting_2d::render::LightingTextures, post_process::lighting_settings_2d::Lighting2dSettings,
 };
 
 pub struct Light2dPhase {
@@ -180,109 +176,4 @@ impl ViewNode for Light2dDrawNode {
 
         Ok(())
     }
-}
-
-#[derive(RenderLabel, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct CompositeDrawPassLabel;
-
-#[derive(Default)]
-pub struct CompositeDrawNode;
-impl ViewNode for CompositeDrawNode {
-    type ViewQuery = (
-        Read<ExtractedView>,
-        Read<ViewTarget>,
-        Read<ExtractedCamera>,
-        Read<ViewUniformOffset>,
-        Read<Lighting2dCompositePipelineId>,
-        Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
-        Read<ExtractedLighting2dSettings>,
-    );
-
-    fn run<'w>(
-        &self,
-        _: &mut RenderGraphContext,
-        render_context: &mut RenderContext<'w>,
-        (
-            view,
-            view_target,
-            camera,
-            view_uniform_offset,
-            composite_pipeline_id,
-            settings_uniform_index,
-            lighting_settings,
-        ): QueryItem<'w, '_, Self::ViewQuery>,
-        world: &'w World,
-    ) -> std::result::Result<(), NodeRunError> {
-        let Some(light_phase) = world
-            .resource::<ViewSortedRenderPhases<Light2dPhase>>()
-            .get(&view.retained_view_entity)
-        else {
-            return Ok(());
-        };
-
-        if light_phase.items.is_empty() {
-            return Ok(());
-        }
-
-        let mut lighting_texture = world
-            .resource::<LightingTextures>()
-            .get(&view.retained_view_entity)
-            .expect(&format!(
-                "Expected the lighting texture for view {:?} to exist",
-                view.retained_view_entity.main_entity.id()
-            ))
-            .clone();
-
-        if should_run_penetration_pass(&lighting_settings.penetration) {
-            run_penetration_pass(
-                world,
-                render_context,
-                camera,
-                lighting_texture.input(),
-                lighting_texture.output(),
-                view_uniform_offset.offset,
-                settings_uniform_index.index(),
-            );
-            lighting_texture.flip();
-        }
-
-        if lighting_settings.blur > 0 {
-            run_blur_pass(
-                world,
-                render_context,
-                lighting_texture.input(),
-                lighting_texture.output(),
-                settings_uniform_index.index(),
-                IVec2::new(1, 0),
-            );
-            lighting_texture.flip();
-            run_blur_pass(
-                world,
-                render_context,
-                lighting_texture.input(),
-                lighting_texture.output(),
-                settings_uniform_index.index(),
-                IVec2::new(0, 1),
-            );
-            lighting_texture.flip();
-        }
-
-        run_composite_pass(
-            world,
-            render_context,
-            lighting_texture.input(),
-            view_target,
-            composite_pipeline_id.0,
-            settings_uniform_index.index(),
-        );
-
-        Ok(())
-    }
-}
-
-fn should_run_penetration_pass(penetration: &PenetrationSettings) -> bool {
-    penetration.max > 0.0
-        && penetration.intensity > 0.0
-        && penetration.sample_directions > 0
-        && penetration.sample_steps > 0
 }

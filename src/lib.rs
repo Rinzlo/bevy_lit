@@ -1,11 +1,9 @@
 mod lighting_2d;
-mod node;
-mod pipeline;
 mod plugin;
-mod types;
+mod post_process;
 
 pub mod prelude {
     pub use crate::lighting_2d::light_2d::*;
-    pub use crate::plugin::Lighting2dPlugin;
-    pub use crate::types::*;
+    pub use crate::plugin::*;
+    pub use crate::post_process::lighting_settings_2d::*;
 }

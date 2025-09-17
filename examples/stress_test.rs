@@ -62,12 +62,12 @@ fn setup(
     // spawn point light
     commands.spawn((
         Torch,
-        PointLight2d {
-            color: Color::srgb(1.0, 1.0, 1.0),
+        Light2d::Point {
+            color: Color::WHITE,
             intensity: 3.0,
             radius: 100.0,
             falloff: 2.0,
-            ..default()
+            shadows_enabled: true,
         },
     ));
 

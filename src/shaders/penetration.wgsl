@@ -1,7 +1,10 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_lit::{
     types::Lighting2dSettings,
-    view_transformations::{frag_to_world, world_to_uv},
+    view_transformations::{
+        frag_to_world,
+        world_to_uv,
+    },
 }
 
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;

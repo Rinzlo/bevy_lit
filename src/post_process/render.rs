@@ -1,22 +1,36 @@
 use bevy::{
+    asset::Handle,
     core_pipeline::FullscreenShader,
     prelude::*,
     render::{
         render_resource::{
-            binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
+            binding_types::{sampler, texture_2d, uniform_buffer},
             BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, FragmentState, MultisampleState, PipelineCache,
-            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, SpecializedRenderPipeline,
-            TextureFormat, TextureSampleType,
+            ColorTargetState, ColorWrites, FragmentState, PipelineCache, RenderPipelineDescriptor,
+            SamplerBindingType, ShaderStages, ShaderType, SpecializedRenderPipeline,
+            SpecializedRenderPipelines, TextureFormat, TextureSampleType,
         },
         renderer::RenderDevice,
-        view::{ViewTarget, ViewUniform},
+        sync_world::RenderEntity,
+        view::{ExtractedView, ViewTarget, ViewUniform},
+        Extract,
     },
+    shader::Shader,
 };
 
-use crate::plugin::{ExtractedLighting2dSettings, ExtractedPointLight2d, Lighting2dArray};
+use crate::post_process::lighting_settings_2d::{
+    AmbientLight2d, Lighting2dSettings, PenetrationSettings, RaymarchSettings,
+};
 
-fn create_pipeline(
+#[derive(Resource)]
+pub struct Lighting2dPostProcessPipelines {
+    pub penetration_layout: BindGroupLayout,
+    pub penetration_pipeline: CachedRenderPipelineId,
+    pub blur_layout: BindGroupLayout,
+    pub blur_pipeline: CachedRenderPipelineId,
+}
+
+fn create_post_process_pipeline(
     render_device: &RenderDevice,
     pipeline_cache: &PipelineCache,
     fullscreen_shader: &FullscreenShader,
@@ -53,32 +67,14 @@ fn create_pipeline(
     (layout, pipeline)
 }
 
-pub fn init_lighting2d_pipelines(
+pub fn init_post_process_pipelines(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
     pipeline_cache: Res<PipelineCache>,
     asset_server: Res<AssetServer>,
     fullscreen_shader: Res<FullscreenShader>,
 ) {
-    let (lighting_layout, lighting_pipeline) = create_pipeline(
-        &render_device,
-        &pipeline_cache,
-        &fullscreen_shader,
-        "lighting",
-        asset_server.load("embedded://bevy_lit/shaders/lighting.wgsl"),
-        &BindGroupLayoutEntries::sequential(
-            ShaderStages::FRAGMENT,
-            (
-                uniform_buffer::<ViewUniform>(true),
-                uniform_buffer::<ExtractedLighting2dSettings>(true),
-                storage_buffer_read_only::<Lighting2dArray<ExtractedPointLight2d>>(false),
-                texture_2d(TextureSampleType::Float { filterable: true }),
-                sampler(SamplerBindingType::Filtering),
-            ),
-        ),
-    );
-
-    let (penetration_layout, penetration_pipeline) = create_pipeline(
+    let (penetration_layout, penetration_pipeline) = create_post_process_pipeline(
         &render_device,
         &pipeline_cache,
         &fullscreen_shader,
@@ -89,13 +85,15 @@ pub fn init_lighting2d_pipelines(
             (
                 uniform_buffer::<ViewUniform>(true),
                 uniform_buffer::<ExtractedLighting2dSettings>(true),
+                // TODO: remember this: use the voronoi texture instead of the lighting one
+                // voronoi texture
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 sampler(SamplerBindingType::Filtering),
             ),
         ),
     );
 
-    let (blur_layout, blur_pipeline) = create_pipeline(
+    let (blur_layout, blur_pipeline) = create_post_process_pipeline(
         &render_device,
         &pipeline_cache,
         &fullscreen_shader,
@@ -111,24 +109,12 @@ pub fn init_lighting2d_pipelines(
         ),
     );
 
-    commands.insert_resource(Lighting2dPipelines {
-        lighting_layout,
-        lighting_pipeline,
+    commands.insert_resource(Lighting2dPostProcessPipelines {
         penetration_layout,
         penetration_pipeline,
         blur_layout,
         blur_pipeline,
     });
-}
-
-#[derive(Resource)]
-pub struct Lighting2dPipelines {
-    pub lighting_layout: BindGroupLayout,
-    pub lighting_pipeline: CachedRenderPipelineId,
-    pub penetration_layout: BindGroupLayout,
-    pub penetration_pipeline: CachedRenderPipelineId,
-    pub blur_layout: BindGroupLayout,
-    pub blur_pipeline: CachedRenderPipelineId,
 }
 
 #[derive(Resource)]
@@ -196,5 +182,62 @@ impl SpecializedRenderPipeline for Lighting2dCompositePipeline {
             push_constant_ranges: vec![],
             zero_initialize_workgroup_memory: false,
         }
+    }
+}
+
+#[derive(Component, Clone, ShaderType)]
+pub struct ExtractedLighting2dSettings {
+    #[size(16)]
+    pub raymarch: RaymarchSettings,
+    pub penetration: PenetrationSettings,
+    pub ambient_light: LinearRgba,
+    pub scale: f32,
+    pub tint_occluders: u32,
+    pub edge_intensity: f32,
+    pub blur: i32,
+}
+
+pub fn extract_lighting_settings(
+    mut commands: Commands,
+    ambient_light_query: Extract<
+        Query<(RenderEntity, &Lighting2dSettings, &AmbientLight2d), With<Camera2d>>,
+    >,
+) {
+    for (e, settings, ambient_light) in &ambient_light_query {
+        commands.entity(e).insert(ExtractedLighting2dSettings {
+            scale: settings.scale,
+            ambient_light: ambient_light.color.to_linear() * ambient_light.brightness,
+            raymarch: settings.raymarch.clone(),
+            penetration: settings.penetration.clone(),
+            tint_occluders: if settings.tint_occluders { 1 } else { 0 },
+            edge_intensity: settings.edge_intensity,
+            blur: settings.blur as i32,
+        });
+    }
+}
+
+#[derive(Component, Deref)]
+pub struct Lighting2dCompositePipelineId(pub CachedRenderPipelineId);
+
+pub fn prepare_composite_pipelines(
+    mut commands: Commands,
+    pipeline_cache: Res<PipelineCache>,
+    mut composite_pipelines: ResMut<SpecializedRenderPipelines<Lighting2dCompositePipeline>>,
+    composite_pipeline: Res<Lighting2dCompositePipeline>,
+    views_query: Query<(Entity, &ExtractedView, &Msaa), With<ExtractedLighting2dSettings>>,
+) {
+    for (entity, view, msaa) in &views_query {
+        commands
+            .entity(entity)
+            .insert(Lighting2dCompositePipelineId(
+                composite_pipelines.specialize(
+                    &pipeline_cache,
+                    &composite_pipeline,
+                    Lighting2dPipelineKey {
+                        hdr: view.hdr,
+                        msaa_samples: msaa.samples(),
+                    },
+                ),
+            ));
     }
 }

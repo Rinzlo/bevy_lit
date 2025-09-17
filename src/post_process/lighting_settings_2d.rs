@@ -1,11 +1,8 @@
 use bevy::{
-    camera::visibility::{add_visibility_class, VisibilityClass},
     prelude::*,
-    reflect::Reflect,
     render::{render_resource::ShaderType, sync_world::SyncToRenderWorld},
-    transform::components::Transform,
 };
-use bevy_voronoi::prelude::{VoronoiMaterial, VoronoiView};
+use bevy_voronoi::prelude::VoronoiView;
 
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
@@ -104,48 +101,5 @@ impl Default for Lighting2dSettings {
             edge_intensity: 0.0,
             blur: 0,
         }
-    }
-}
-
-/// Represents a point light in a 2D environment.
-#[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, Transform, Visibility, VisibilityClass)]
-#[component(on_add = add_visibility_class::<PointLight2d>)]
-pub struct PointLight2d {
-    /// The color of the point light.
-    pub color: Color,
-    /// The intensity of the point light.
-    pub intensity: f32,
-    /// The radius of the point light's influence.
-    pub radius: f32,
-    /// The falloff rate of the point light.
-    pub falloff: f32,
-    /// wether the point light should project shadows
-    pub shadows_enabled: bool,
-}
-
-impl Default for PointLight2d {
-    fn default() -> Self {
-        Self {
-            color: Color::WHITE,
-            intensity: 1.0,
-            radius: 64.0,
-            falloff: 1.0,
-            shadows_enabled: true,
-        }
-    }
-}
-
-/// A light occluder component. Should be used alongside a Mesh2d
-#[derive(Component, Clone, Debug, Default, Reflect)]
-#[require(VoronoiMaterial)]
-pub struct LightOccluder2d {
-    /// Any texture with a transparent background. The occluder will take it's shape.
-    pub occluder_mask: Handle<Image>,
-}
-
-impl LightOccluder2d {
-    pub fn new(occluder_mask: Handle<Image>) -> Self {
-        Self { occluder_mask }
     }
 }
