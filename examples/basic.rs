@@ -104,7 +104,8 @@ fn setup(
         .with_children(|builder| {
             let point_light = Light2d::Point {
                 intensity: 2.0,
-                radius: 1100.0,
+                outer_radius: 1100.0,
+                inner_radius: 0.0,
                 falloff: 3.0,
                 color: Color::from(BLUE_600),
                 shadows_enabled: true,
@@ -125,7 +126,8 @@ fn setup(
         CursorLight,
         Light2d::Point {
             intensity: 2.0,
-            radius: 400.0,
+            outer_radius: 400.0,
+            inner_radius: 0.0,
             falloff: 10.0,
             color: Color::from(YELLOW_600),
             shadows_enabled: true,

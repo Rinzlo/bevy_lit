@@ -45,15 +45,15 @@ pub struct Lighting2dPlugin;
 
 impl Plugin for Lighting2dPlugin {
     fn build(&self, app: &mut App) {
-        load_shader_library!(app, "types.wgsl");
         load_shader_library!(app, "view_transformations.wgsl");
-        load_shader_library!(app, "light2d/light2d_vertex_output.wgsl");
-        load_shader_library!(app, "light2d/light2d_view_bindings.wgsl");
+        load_shader_library!(app, "lighting2d_settings/lighting2d_settings_types.wgsl");
+        load_shader_library!(app, "light2d/light2d_common.wgsl");
 
         embedded_asset!(app, "lighting2d_settings/penetration.wgsl");
         embedded_asset!(app, "lighting2d_settings/blur.wgsl");
         embedded_asset!(app, "lighting2d_settings/composite.wgsl");
         embedded_asset!(app, "light2d/light2d.wgsl");
+        embedded_asset!(app, "light2d/point_light2d.wgsl");
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),

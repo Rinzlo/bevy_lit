@@ -1,4 +1,4 @@
-#define_import_path bevy_lit::types
+#define_import_path bevy_lit::lighting2d_settings_types
 
 struct RaymarchSettings {
     max_steps: u32,
@@ -23,16 +23,4 @@ struct Lighting2dSettings {
     tint_occluders: u32,
     edge_intensity: f32,
     blur: i32,
-}
-
-struct LightOccluder2d {
-    center: vec2<f32>,
-    half_size: vec2<f32>,
-}
-
-struct PointLight2d {
-    center: vec2<f32>,
-    radius: f32,
-    falloff: f32,
-    shadows_enabled: u32,
 }

@@ -54,6 +54,7 @@ use crate::{
 pub struct Light2dPipeline {
     shader: Handle<Shader>,
     view_layout: BindGroupLayout,
+    point_light_shader: Handle<Shader>,
     point_material_layout: BindGroupLayout,
 }
 
@@ -88,6 +89,7 @@ pub fn init_light2d_pipeline(
 
     commands.insert_resource(Light2dPipeline {
         shader: load_embedded_asset!(asset_server.as_ref(), "light2d.wgsl"),
+        point_light_shader: load_embedded_asset!(asset_server.as_ref(), "point_light2d.wgsl"),
         view_layout,
         point_material_layout: point_layout,
     });
@@ -135,7 +137,9 @@ impl SpecializedRenderPipeline for Light2dPipeline {
                 )],
             },
             fragment: Some(FragmentState {
-                shader: self.shader.clone(),
+                shader: match key.light2d_type {
+                    Light2dType::Point => self.point_light_shader.clone(),
+                },
                 shader_defs: vec![],
                 entry_point: Some("fragment".into()),
                 targets: vec![Some(ColorTargetState {
@@ -176,7 +180,11 @@ pub struct ExtractedLight2d {
 }
 
 pub enum ExtractedLight2dKind {
-    Point { falloff: f32, radius: f32 },
+    Point {
+        falloff: f32,
+        inner_radius: f32,
+        outer_radius: f32,
+    },
 }
 
 #[derive(Resource, Deref, DerefMut, Default)]
@@ -206,11 +214,13 @@ pub fn extract_light2d_instances(
                 color,
                 intensity,
                 shadows_enabled,
-                radius,
+                inner_radius,
+                outer_radius,
                 falloff,
             } => (
                 ExtractedLight2dKind::Point {
-                    radius: *radius,
+                    inner_radius: *inner_radius,
+                    outer_radius: *outer_radius,
                     falloff: *falloff,
                 },
                 color.to_linear() * *intensity,
@@ -466,7 +476,8 @@ impl Default for Light2dMeta {
 #[derive(ShaderType)]
 pub struct PointLight2dGpuType {
     center: Vec2,
-    radius: f32,
+    inner_radius: f32,
+    outer_radius: f32,
     falloff: f32,
     shadows_enabled: u32,
 }
@@ -507,9 +518,14 @@ pub fn prepare_light2d_buffers(
                 .insert(index..index);
 
             let (quad_size, light_bind_group) = match light.kind {
-                ExtractedLight2dKind::Point { radius, falloff } => {
+                ExtractedLight2dKind::Point {
+                    inner_radius,
+                    outer_radius,
+                    falloff,
+                } => {
                     let mut buffer = UniformBuffer::from(PointLight2dGpuType {
-                        radius,
+                        inner_radius,
+                        outer_radius,
                         falloff,
                         center: light.transform.translation().xy(),
                         shadows_enabled: light.shadows_enabled,
@@ -523,7 +539,7 @@ pub fn prepare_light2d_buffers(
                         &BindGroupEntries::single(buffer.binding().unwrap()),
                     );
 
-                    (Vec2::splat(radius * 2.0), light_bind_group)
+                    (Vec2::splat(outer_radius * 2.0), light_bind_group)
                 }
             };
             let transform = light.transform.affine()

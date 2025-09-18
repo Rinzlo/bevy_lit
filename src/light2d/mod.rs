@@ -17,7 +17,8 @@ pub enum Light2d {
         /// The intensity of the point light.
         intensity: f32,
         /// The radius of the point light's influence.
-        radius: f32,
+        inner_radius: f32,
+        outer_radius: f32,
         /// The falloff rate of the point light.
         falloff: f32,
         /// wether the point light should project shadows
@@ -30,7 +31,8 @@ impl Default for Light2d {
         Self::Point {
             color: Color::WHITE,
             intensity: 1.0,
-            radius: 64.0,
+            inner_radius: 0.0,
+            outer_radius: 64.0,
             falloff: 1.0,
             shadows_enabled: true,
         }

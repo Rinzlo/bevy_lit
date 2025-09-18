@@ -63,7 +63,8 @@ fn setup(
     commands.spawn((
         Light2d::Point {
             intensity: 4.0,
-            radius: 512.0,
+            outer_radius: 512.0,
+            inner_radius: 0.0,
             falloff: 1.0,
             color: Color::WHITE,
             shadows_enabled: true,

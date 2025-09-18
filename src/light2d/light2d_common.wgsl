@@ -1,0 +1,97 @@
+#define_import_path bevy_lit::light2d_common
+
+#import bevy_render::view::{
+    View,
+    frag_coord_to_ndc,
+    position_ndc_to_world,
+    position_world_to_ndc,
+    ndc_to_uv,
+    uv_to_ndc,
+}
+#import bevy_lit::{
+    lighting2d_settings_types::Lighting2dSettings,
+    view_transformations::{world_to_uv, frag_to_world},
+}
+
+@group(0) @binding(0) var<uniform> view: View;
+@group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
+@group(0) @binding(2) var voronoi_texture: texture_2d<f32>;
+@group(0) @binding(3) var voronoi_sampler: sampler;
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) @interpolate(flat) color: vec4<f32>,
+};
+
+fn radial_attenuation(inner_radius: f32, outer_radius: f32, falloff: f32, dist: f32) -> f32 {
+    if dist <= inner_radius {
+        return 1.0;
+    }
+
+    if dist >= outer_radius {
+        return 0.0;
+    }
+
+    let s = (dist - inner_radius) / (outer_radius - inner_radius);
+
+    let s2 = s * s;
+    return pow(1.0 - s2, 2.0) / (1.0 + falloff * s2);
+}
+
+fn angular_attenuation(inner_angle: f32, outer_angle: f32, falloff: f32, dist: f32) -> f32 {
+    if dist <= inner_angle {
+        return 1.0;
+    }
+
+    if dist >= outer_angle {
+        return 0.0;
+    }
+
+    let s = (dist - inner_angle) / (outer_angle - inner_angle);
+
+    let s2 = s * s;
+    return pow(1.0 - s2, 2.0) / (1.0 + falloff * s2);
+}
+
+fn get_sdf(pos: vec2<f32>) -> f32 {
+    let uv = world_to_uv(vec3(pos, 0.0), view);
+    let seed = textureSampleLevel(voronoi_texture, voronoi_sampler, uv, 0.0);
+    let dist = length(pos - frag_to_world(seed / settings.scale, view).xy);
+    // Determine if the pixel is inside or outside the shape
+    return select(dist, -dist, seed.w == 1.0);
+}
+
+// Implementation follows the demo in this article
+// https://www.rykap.com/2020/09/23/distance-fields
+fn raymarch(ray_origin: vec2<f32>, ray_target: vec2<f32>) -> f32 {
+    let config = settings.raymarch;
+    let max_steps = config.max_steps;
+    let sharpness = config.sharpness;
+    let jitter = config.jitter;
+
+    let ray_direction = normalize(ray_target - ray_origin);
+    let stop_at = distance(ray_origin, ray_target);
+
+    var ray_progress = 0.0;
+    var light_contrib = 1.0;
+
+    for (var i = 0u; i < max_steps; i++) {
+        // ray found target
+        if ray_progress > stop_at {
+            return light_contrib;
+        }
+
+        let sdf = get_sdf(ray_origin + ray_progress * ray_direction);
+
+        // ray found occluder
+        if sdf <= 0.0 {
+            break;
+        }
+
+        light_contrib = min(light_contrib, sdf / ray_progress * sharpness);
+        ray_progress += sdf * (1.0 - jitter) + jitter * fract(sdf * 43758.5453);
+    }
+
+    return 0.0;
+}

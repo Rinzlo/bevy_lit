@@ -1,0 +1,62 @@
+#import bevy_lit::{
+    view_transformations::frag_to_world,
+    light2d_vertex_output::VertexOutput,
+    light2d_common::{
+        settings,
+        view,
+        get_sdf,
+        radial_attenuation,
+        raymarch
+    },
+}
+
+struct SpotLight2d {
+    center: vec2<f32>,
+    inner_radius: f32,
+    outer_radius: f32,
+    radial_falloff: f32,
+    inner_angle: f32,
+    outer_angle: f32,
+    angular_falloff: f32,
+    shadows_enabled: u32,
+}
+
+@group(1) @binding(0) var<uniform> light: SpotLight2d;
+
+@fragment
+fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+    let pos = frag_to_world(in.clip_position / settings.scale, view).xy;
+
+    let light_dist = distance(pos, light.center);
+
+    if light_dist > light.outer_radius {
+        discard;
+    }
+
+    let sdf = get_sdf(pos);
+
+    let rad_att = radial_attenuation(
+        light.inner_radius,
+        light.outer_radius,
+        light.radial_falloff,
+        light_dist
+    );
+
+    var light_contrib = in.color.rgb * rad_att;
+
+    // inside occluder
+    if sdf <= 0.0 {
+        light_contrib *= select(0.0, 1.0, bool(settings.tint_occluders));
+    } else {
+        if bool(light.shadows_enabled) {
+            light_contrib *= raymarch(pos, light.center);
+        }
+    }
+
+    if settings.edge_intensity > 0.0 && sdf > 0.0 {
+        let edge_intensity = 1.0 / sdf * settings.edge_intensity;
+        light_contrib += light_contrib * edge_intensity * 1.0;
+    }
+
+    return vec4<f32>(light_contrib, sdf);
+}

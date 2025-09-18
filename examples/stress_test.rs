@@ -65,7 +65,8 @@ fn setup(
         Light2d::Point {
             color: Color::WHITE,
             intensity: 3.0,
-            radius: 100.0,
+            outer_radius: 100.0,
+            inner_radius: 0.0,
             falloff: 2.0,
             shadows_enabled: true,
         },
