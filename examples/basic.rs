@@ -61,7 +61,7 @@ fn setup(
             ..default()
         },
         AmbientLight2d {
-            brightness: 0.1,
+            intensity: 0.1,
             color: Color::from(BLUE_300),
         },
     ));

@@ -1,5 +1,22 @@
 # Changelog
 
+## Next
+
+### Features
+
+- [ ] Bevy 0.17 support
+- [ ] New light sources:
+  - [x] `SpotLight2d`
+  - [ ] `TextureLight2d`
+  - [ ] `DirectionalLight2d`
+- [ ] New `LitMaterial` Component with support for normal maps and custom materials
+- [ ] WebGL2 support is back
+- [ ] Occlusion layers
+
+### Breaking
+
+- `AmbientLight2d.brightness` is now `AmbientLight2d.intensity` to match other light sources
+
 ## 0.7.0
 
 ### Features

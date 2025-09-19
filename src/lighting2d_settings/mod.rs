@@ -13,15 +13,15 @@ pub mod render;
 pub struct AmbientLight2d {
     /// The color of the ambient light.
     pub color: Color,
-    /// The brightness of the ambient light.
-    pub brightness: f32,
+    /// The intensity of the ambient light.
+    pub intensity: f32,
 }
 
 impl Default for AmbientLight2d {
     fn default() -> Self {
         Self {
             color: Color::WHITE,
-            brightness: 1.0,
+            intensity: 1.0,
         }
     }
 }

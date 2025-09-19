@@ -55,7 +55,7 @@ fn setup(
             ..default()
         },
         AmbientLight2d {
-            brightness: 0.2,
+            intensity: 0.2,
             ..default()
         },
     ));
