@@ -5,7 +5,7 @@
         settings,
         view,
         get_sdf,
-        radial_attenuation,
+        attenuation,
         raymarch
     },
 }
@@ -26,20 +26,20 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let light_dist = distance(pos, light.center);
 
-    if light_dist > light.outer_radius {
-        discard;
-    }
-
-    let sdf = get_sdf(pos);
-
-    let rad_att = radial_attenuation(
+    let radial_attenuation = attenuation(
         light.inner_radius,
         light.outer_radius,
         light.falloff,
         light_dist
     );
 
-    var light_contrib = in.color.rgb * rad_att;
+    if radial_attenuation == 0.0 {
+        discard;
+    }
+
+    let sdf = get_sdf(pos);
+
+    var light_contrib = in.color.rgb * radial_attenuation;
 
     // inside occluder
     if sdf <= 0.0 {

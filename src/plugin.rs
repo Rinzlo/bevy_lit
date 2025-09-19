@@ -54,6 +54,7 @@ impl Plugin for Lighting2dPlugin {
         embedded_asset!(app, "lighting2d_settings/composite.wgsl");
         embedded_asset!(app, "light2d/light2d.wgsl");
         embedded_asset!(app, "light2d/point_light2d.wgsl");
+        embedded_asset!(app, "light2d/spot_light2d.wgsl");
 
         app.add_plugins((
             UniformComponentPlugin::<ExtractedLighting2dSettings>::default(),

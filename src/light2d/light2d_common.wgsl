@@ -24,33 +24,18 @@ struct VertexOutput {
     @location(1) @interpolate(flat) color: vec4<f32>,
 };
 
-fn radial_attenuation(inner_radius: f32, outer_radius: f32, falloff: f32, dist: f32) -> f32 {
-    if dist <= inner_radius {
+fn attenuation(inner: f32, outer: f32, falloff: f32, diff: f32) -> f32 {
+    if diff <= inner {
         return 1.0;
     }
 
-    if dist >= outer_radius {
+    if diff >= outer {
         return 0.0;
     }
 
-    let s = (dist - inner_radius) / (outer_radius - inner_radius);
-
+    let s = (diff - inner) / (outer - inner);
     let s2 = s * s;
-    return pow(1.0 - s2, 2.0) / (1.0 + falloff * s2);
-}
 
-fn angular_attenuation(inner_angle: f32, outer_angle: f32, falloff: f32, dist: f32) -> f32 {
-    if dist <= inner_angle {
-        return 1.0;
-    }
-
-    if dist >= outer_angle {
-        return 0.0;
-    }
-
-    let s = (dist - inner_angle) / (outer_angle - inner_angle);
-
-    let s2 = s * s;
     return pow(1.0 - s2, 2.0) / (1.0 + falloff * s2);
 }
 

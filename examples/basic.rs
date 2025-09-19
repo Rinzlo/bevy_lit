@@ -99,39 +99,40 @@ fn setup(
         ));
     }
 
-    commands
-        .spawn((MovingLights, Transform::default(), Visibility::default()))
-        .with_children(|builder| {
-            let point_light = Light2d::Point {
-                intensity: 2.0,
-                outer_radius: 1100.0,
-                inner_radius: 0.0,
-                falloff: 3.0,
-                color: Color::from(BLUE_600),
-                shadows_enabled: true,
-            };
+    let moving_point_light = Light2d::from(PointLight2d {
+        color: Color::from(BLUE_600),
+        intensity: 2.0,
+        outer_radius: 1100.0,
+        falloff: 3.0,
+        ..default()
+    });
 
-            builder.spawn((
-                point_light.clone(),
+    commands.spawn((
+        MovingLights,
+        Transform::default(),
+        Visibility::default(),
+        children![
+            (
+                moving_point_light.clone(),
                 Transform::from_xyz(-X_EXTENT + 50. / 2., 0.0, 0.0),
-            ));
-
-            builder.spawn((
-                point_light,
+            ),
+            (
+                moving_point_light,
                 Transform::from_xyz(X_EXTENT + 50. / 2., 0.0, 0.0),
-            ));
-        });
+            )
+        ],
+    ));
 
     commands.spawn((
         CursorLight,
-        Light2d::Point {
+        Light2d::from(PointLight2d {
+            color: Color::from(YELLOW_600),
             intensity: 2.0,
             outer_radius: 400.0,
-            inner_radius: 0.0,
             falloff: 10.0,
-            color: Color::from(YELLOW_600),
-            shadows_enabled: true,
-        },
+            ..default()
+        }),
+        Transform::from_scale(Vec3::splat(2.0)),
     ));
 }
 

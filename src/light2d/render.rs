@@ -55,7 +55,9 @@ pub struct Light2dPipeline {
     shader: Handle<Shader>,
     view_layout: BindGroupLayout,
     point_light_shader: Handle<Shader>,
+    spot_light_shader: Handle<Shader>,
     point_material_layout: BindGroupLayout,
+    spot_material_layout: BindGroupLayout,
 }
 
 pub fn init_light2d_pipeline(
@@ -87,17 +89,28 @@ pub fn init_light2d_pipeline(
         ),
     );
 
+    let spot_layout = render_device.create_bind_group_layout(
+        "spot_light2d_layout",
+        &BindGroupLayoutEntries::single(
+            ShaderStages::FRAGMENT,
+            uniform_buffer::<SpotLight2dGpuType>(false),
+        ),
+    );
+
     commands.insert_resource(Light2dPipeline {
         shader: load_embedded_asset!(asset_server.as_ref(), "light2d.wgsl"),
         point_light_shader: load_embedded_asset!(asset_server.as_ref(), "point_light2d.wgsl"),
+        spot_light_shader: load_embedded_asset!(asset_server.as_ref(), "spot_light2d.wgsl"),
         view_layout,
         point_material_layout: point_layout,
+        spot_material_layout: spot_layout,
     });
 }
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy, Reflect)]
 pub enum Light2dType {
     Point,
+    Spot,
 }
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy)]
@@ -116,6 +129,7 @@ impl SpecializedRenderPipeline for Light2dPipeline {
                 self.view_layout.clone(),
                 match key.light2d_type {
                     Light2dType::Point => self.point_material_layout.clone(),
+                    Light2dType::Spot => self.spot_material_layout.clone(),
                 },
             ],
             vertex: VertexState {
@@ -139,6 +153,7 @@ impl SpecializedRenderPipeline for Light2dPipeline {
             fragment: Some(FragmentState {
                 shader: match key.light2d_type {
                     Light2dType::Point => self.point_light_shader.clone(),
+                    Light2dType::Spot => self.spot_light_shader.clone(),
                 },
                 shader_defs: vec![],
                 entry_point: Some("fragment".into()),
@@ -181,9 +196,17 @@ pub struct ExtractedLight2d {
 
 pub enum ExtractedLight2dKind {
     Point {
-        falloff: f32,
         inner_radius: f32,
         outer_radius: f32,
+        falloff: f32,
+    },
+    Spot {
+        inner_radius: f32,
+        outer_radius: f32,
+        radial_falloff: f32,
+        inner_angle: f32,
+        outer_angle: f32,
+        angular_falloff: f32,
     },
 }
 
@@ -226,6 +249,28 @@ pub fn extract_light2d_instances(
                 color.to_linear() * *intensity,
                 *shadows_enabled,
             ),
+            Light2d::Spot {
+                color,
+                intensity,
+                inner_radius,
+                outer_radius,
+                radial_falloff,
+                inner_angle,
+                outer_angle,
+                angular_falloff,
+                shadows_enabled,
+            } => (
+                ExtractedLight2dKind::Spot {
+                    inner_radius: *inner_radius,
+                    outer_radius: *outer_radius,
+                    radial_falloff: *radial_falloff,
+                    inner_angle: inner_angle.to_radians(),
+                    outer_angle: outer_angle.to_radians(),
+                    angular_falloff: *angular_falloff,
+                },
+                color.to_linear() * *intensity,
+                *shadows_enabled,
+            ),
         };
 
         render_light_instances.insert(
@@ -257,13 +302,6 @@ pub fn queue_light2d_instances(
             continue;
         };
 
-        let view_key = Light2dPipelineKey {
-            hdr: view.hdr,
-            light2d_type: Light2dType::Point,
-        };
-
-        let pipeline = pipelines.specialize(&pipeline_cache, &light2d_pipeline, view_key);
-
         view_entities.clear();
         view_entities.extend(
             visible_entities
@@ -279,6 +317,16 @@ pub fn queue_light2d_instances(
             if !view_entities.contains(view_index as usize) {
                 continue;
             }
+
+            let view_key = Light2dPipelineKey {
+                hdr: view.hdr,
+                light2d_type: match render_light.kind {
+                    ExtractedLight2dKind::Point { .. } => Light2dType::Point,
+                    ExtractedLight2dKind::Spot { .. } => Light2dType::Spot,
+                },
+            };
+
+            let pipeline = pipelines.specialize(&pipeline_cache, &light2d_pipeline, view_key);
 
             light2d_phase.add(Light2dPhase {
                 draw_function: draw_light_function,
@@ -482,6 +530,18 @@ pub struct PointLight2dGpuType {
     shadows_enabled: u32,
 }
 
+#[derive(ShaderType)]
+pub struct SpotLight2dGpuType {
+    center: Vec2,
+    inner_radius: f32,
+    outer_radius: f32,
+    radial_falloff: f32,
+    inner_angle: f32,
+    outer_angle: f32,
+    angular_falloff: f32,
+    shadows_enabled: u32,
+}
+
 #[derive(Resource, Deref, DerefMut, Default)]
 pub struct Light2dMaterialBindGroups(pub EntityHashMap<BindGroup>);
 
@@ -536,6 +596,35 @@ pub fn prepare_light2d_buffers(
                     let light_bind_group = render_device.create_bind_group(
                         "point_light2d_bind_group",
                         &light2d_pipeline.point_material_layout,
+                        &BindGroupEntries::single(buffer.binding().unwrap()),
+                    );
+
+                    (Vec2::splat(outer_radius * 2.0), light_bind_group)
+                }
+                ExtractedLight2dKind::Spot {
+                    inner_radius,
+                    outer_radius,
+                    radial_falloff,
+                    inner_angle,
+                    outer_angle,
+                    angular_falloff,
+                } => {
+                    let mut buffer = UniformBuffer::from(SpotLight2dGpuType {
+                        inner_radius,
+                        outer_radius,
+                        radial_falloff,
+                        inner_angle,
+                        outer_angle,
+                        angular_falloff,
+                        center: light.transform.translation().xy(),
+                        shadows_enabled: light.shadows_enabled,
+                    });
+
+                    buffer.write_buffer(&render_device, &render_queue);
+
+                    let light_bind_group = render_device.create_bind_group(
+                        "spot_light2d_bind_group",
+                        &light2d_pipeline.spot_material_layout,
                         &BindGroupEntries::single(buffer.binding().unwrap()),
                     );
 

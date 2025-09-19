@@ -1,11 +1,11 @@
 #import bevy_lit::{
     view_transformations::frag_to_world,
-    light2d_vertex_output::VertexOutput,
     light2d_common::{
+        VertexOutput,
         settings,
         view,
         get_sdf,
-        radial_attenuation,
+        attenuation,
         raymarch
     },
 }
@@ -28,21 +28,35 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let pos = frag_to_world(in.clip_position / settings.scale, view).xy;
 
     let light_dist = distance(pos, light.center);
-
-    if light_dist > light.outer_radius {
-        discard;
-    }
-
-    let sdf = get_sdf(pos);
-
-    let rad_att = radial_attenuation(
+    let radial_attenuation = attenuation(
         light.inner_radius,
         light.outer_radius,
         light.radial_falloff,
         light_dist
     );
 
-    var light_contrib = in.color.rgb * rad_att;
+    if radial_attenuation == 0.0 {
+        discard;
+    }
+
+    let light_direction = vec2<f32>(0.0, -1.0);
+    let fragment_direction = normalize(light.center - pos);
+    let dot_product = dot(light_direction, fragment_direction);
+    let angle_diff = acos(clamp(dot_product, -1.0, 1.0));
+    let angular_attenuation = attenuation(
+        light.inner_angle,
+        light.outer_angle,
+        light.angular_falloff,
+        angle_diff
+    );
+
+    if angular_attenuation == 0.0 {
+        discard;
+    }
+
+    let sdf = get_sdf(pos);
+
+    var light_contrib = in.color.rgb * radial_attenuation * angular_attenuation;
 
     // inside occluder
     if sdf <= 0.0 {
