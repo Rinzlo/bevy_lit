@@ -13,7 +13,7 @@ use bevy::{
     image::BevyDefault,
     math::{Affine3A, FloatOrd},
     mesh::{VertexBufferLayout, VertexFormat},
-    platform::collections::{HashMap, HashSet},
+    platform::collections::HashMap,
     prelude::*,
     render::{
         extract_component::{ComponentUniforms, DynamicUniformIndex},
@@ -25,15 +25,13 @@ use bevy::{
             binding_types::{sampler, texture_2d, uniform_buffer},
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendComponent,
             BlendFactor, BlendOperation, BlendState, BufferUsages, ColorTargetState, ColorWrites,
-            Extent3d, FragmentState, IndexFormat, PipelineCache, RawBufferVec,
-            RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
-            ShaderType, SpecializedRenderPipeline, SpecializedRenderPipelines, TextureDescriptor,
-            TextureDimension, TextureFormat, TextureSampleType, TextureUsages, UniformBuffer,
-            VertexState, VertexStepMode,
+            FragmentState, IndexFormat, PipelineCache, RawBufferVec, RenderPipelineDescriptor,
+            SamplerBindingType, SamplerDescriptor, ShaderStages, ShaderType,
+            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat,
+            TextureSampleType, UniformBuffer, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, RenderEntity},
-        texture::{CachedTexture, TextureCache},
         view::{
             ExtractedView, RenderVisibleEntities, RetainedViewEntity, ViewTarget, ViewUniform,
             ViewUniformOffset, ViewUniforms,
@@ -46,8 +44,7 @@ use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
 
 use crate::{
-    light2d::{node::Light2dPhase, Light2d},
-    lighting2d_settings::render::ExtractedLighting2dSettings,
+    light2d::Light2d, post_process::render::ExtractedLighting2dSettings, render::Light2dPhase,
 };
 
 #[derive(Resource)]
@@ -340,104 +337,6 @@ pub fn queue_light2d_instances(
             });
         }
     }
-}
-
-#[derive(Clone)]
-pub struct LightingTexture {
-    flip: bool,
-    texture_a: CachedTexture,
-    texture_b: CachedTexture,
-}
-
-#[derive(Resource, Deref, DerefMut, Default)]
-pub struct LightingTextures(pub HashMap<RetainedViewEntity, LightingTexture>);
-
-impl LightingTexture {
-    pub fn input(&self) -> &CachedTexture {
-        if self.flip {
-            &self.texture_b
-        } else {
-            &self.texture_a
-        }
-    }
-
-    pub fn output(&self) -> &CachedTexture {
-        if self.flip {
-            &self.texture_a
-        } else {
-            &self.texture_b
-        }
-    }
-
-    pub fn flip(&mut self) {
-        self.flip = !self.flip;
-    }
-}
-
-fn create_aux_texture(
-    view_target: &ViewTarget,
-    texture_cache: &mut TextureCache,
-    render_device: &RenderDevice,
-    label: &'static str,
-    scale: f32,
-) -> CachedTexture {
-    let size = view_target.main_texture().size();
-    let size = Extent3d {
-        width: (size.width as f32 * scale) as u32,
-        height: (size.height as f32 * scale) as u32,
-        depth_or_array_layers: size.depth_or_array_layers,
-    };
-
-    texture_cache.get(
-        render_device,
-        TextureDescriptor {
-            label: Some(label),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba16Float,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        },
-    )
-}
-
-pub fn prepare_lighting_textures(
-    views: Query<(&ViewTarget, &ExtractedView, &ExtractedLighting2dSettings)>,
-    render_device: Res<RenderDevice>,
-    mut texture_cache: ResMut<TextureCache>,
-    mut lighting_textures: ResMut<LightingTextures>,
-    mut live_entities: Local<HashSet<RetainedViewEntity>>,
-) {
-    live_entities.clear();
-
-    for (view_target, extracted_view, settings) in &views {
-        live_entities.insert(extracted_view.retained_view_entity);
-
-        lighting_textures.insert(
-            extracted_view.retained_view_entity,
-            LightingTexture {
-                flip: false,
-                texture_a: create_aux_texture(
-                    view_target,
-                    &mut texture_cache,
-                    &render_device,
-                    "lighting_texture_a",
-                    settings.scale,
-                ),
-                texture_b: create_aux_texture(
-                    view_target,
-                    &mut texture_cache,
-                    &render_device,
-                    "lighting_texture_b",
-                    settings.scale,
-                ),
-            },
-        );
-    }
-
-    lighting_textures.retain(|entity, _| live_entities.contains(entity));
 }
 
 #[derive(Component, Deref, DerefMut)]

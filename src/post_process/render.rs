@@ -18,9 +18,7 @@ use bevy::{
     shader::Shader,
 };
 
-use crate::lighting2d_settings::{
-    AmbientLight2d, Lighting2dSettings, PenetrationSettings, RaymarchSettings,
-};
+use crate::settings::{AmbientLight2d, Lighting2dSettings, PenetrationSettings, RaymarchSettings};
 
 #[derive(Resource)]
 pub struct Lighting2dPostProcessPipelines {
@@ -195,7 +193,7 @@ pub struct ExtractedLighting2dSettings {
     pub blur: i32,
 }
 
-pub fn extract_lighting_settings(
+pub fn extract_lighting2d_settings(
     mut commands: Commands,
     ambient_light_query: Extract<
         Query<(RenderEntity, &Lighting2dSettings, &AmbientLight2d), With<Camera2d>>,

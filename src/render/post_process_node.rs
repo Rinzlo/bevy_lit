@@ -4,7 +4,7 @@ use bevy::{
     render::{
         camera::ExtractedCamera,
         extract_component::{ComponentUniforms, DynamicUniformIndex},
-        render_graph::{NodeRunError, RenderGraphContext, RenderLabel, ViewNode},
+        render_graph::{NodeRunError, RenderGraphContext, ViewNode},
         render_resource::{
             BindGroupEntries, CachedRenderPipelineId, Operations, PipelineCache,
             RenderPassColorAttachment, RenderPassDescriptor, SamplerDescriptor, UniformBuffer,
@@ -15,14 +15,12 @@ use bevy::{
 };
 
 use crate::{
-    light2d::render::{LightingTexture, LightingTextures},
-    lighting2d_settings::{
-        render::{
-            ExtractedLighting2dSettings, Lighting2dCompositePipeline,
-            Lighting2dCompositePipelineId, Lighting2dPostProcessPipelines,
-        },
-        PenetrationSettings,
+    post_process::render::{
+        ExtractedLighting2dSettings, Lighting2dCompositePipeline, Lighting2dCompositePipelineId,
+        Lighting2dPostProcessPipelines,
     },
+    render::{LightingTexture, LightingTextures},
+    settings::PenetrationSettings,
 };
 
 pub fn run_penetration_pass<'w>(
@@ -190,9 +188,6 @@ pub fn run_composite_pass<'w>(
     pass.set_bind_group(0, &bind_group, &[settings_uniform_offset]);
     pass.draw(0..3, 0..1);
 }
-
-#[derive(RenderLabel, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct Light2dPostProcessPassLabel;
 
 #[derive(Default)]
 pub struct Light2dPostProcessDrawNode;

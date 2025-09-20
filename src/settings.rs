@@ -4,9 +4,6 @@ use bevy::{
 };
 use bevy_voronoi::prelude::VoronoiView;
 
-pub mod node;
-pub mod render;
-
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
 #[require(SyncToRenderWorld)]

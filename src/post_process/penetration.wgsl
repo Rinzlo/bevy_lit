@@ -1,7 +1,7 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_render::view::View
 #import bevy_lit::{
-    lighting2d_settings_types::Lighting2dSettings,
+    settings_types::Lighting2dSettings,
     view_transformations::{frag_to_world, world_to_uv},
 }
 

@@ -9,7 +9,7 @@
     uv_to_ndc,
 }
 #import bevy_lit::{
-    lighting2d_settings_types::Lighting2dSettings,
+    settings_types::Lighting2dSettings,
     view_transformations::{world_to_uv, frag_to_world},
 }
 

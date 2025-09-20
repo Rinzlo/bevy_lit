@@ -1,4 +1,4 @@
-#define_import_path bevy_lit::lighting2d_settings_types
+#define_import_path bevy_lit::settings_types
 
 struct RaymarchSettings {
     max_steps: u32,

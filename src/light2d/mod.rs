@@ -1,11 +1,56 @@
 use bevy::{
+    asset::embedded_asset,
     camera::visibility::{add_visibility_class, VisibilityClass},
     prelude::*,
-    render::sync_world::SyncToRenderWorld,
+    render::{
+        render_phase::AddRenderCommand, render_resource::SpecializedRenderPipelines,
+        sync_world::SyncToRenderWorld, Render, RenderApp, RenderStartup, RenderSystems,
+    },
+    shader::load_shader_library,
 };
 
-pub mod node;
+use crate::{
+    light2d::render::{
+        extract_light2d_instances, init_light2d_pipeline, prepare_light2d_buffers,
+        prepare_light2d_view_bind_groups, queue_light2d_instances, DrawLight2dMesh, Light2dBatches,
+        Light2dMaterialBindGroups, Light2dMeta, Light2dPipeline, RenderLights2dInstances,
+    },
+    render::Light2dPhase,
+};
+
 pub mod render;
+
+pub struct Light2dPlugin;
+impl Plugin for Light2dPlugin {
+    fn build(&self, app: &mut App) {
+        load_shader_library!(app, "light2d_common.wgsl");
+        embedded_asset!(app, "light2d.wgsl");
+        embedded_asset!(app, "point_light2d.wgsl");
+        embedded_asset!(app, "spot_light2d.wgsl");
+
+        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
+
+        render_app
+            .init_resource::<RenderLights2dInstances>()
+            .init_resource::<SpecializedRenderPipelines<Light2dPipeline>>()
+            .init_resource::<Light2dMeta>()
+            .init_resource::<Light2dBatches>()
+            .init_resource::<Light2dMaterialBindGroups>()
+            .add_systems(ExtractSchedule, extract_light2d_instances)
+            .add_systems(RenderStartup, init_light2d_pipeline)
+            .add_systems(
+                Render,
+                (
+                    queue_light2d_instances.in_set(RenderSystems::Queue),
+                    (prepare_light2d_view_bind_groups, prepare_light2d_buffers)
+                        .in_set(RenderSystems::PrepareBindGroups),
+                ),
+            )
+            .add_render_command::<Light2dPhase, DrawLight2dMesh>();
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct PointLight2d {
