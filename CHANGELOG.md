@@ -4,7 +4,7 @@
 
 ### Features
 
-- [ ] Bevy 0.17 support
+- [x] Bevy 0.17 support
 - [ ] New light sources:
   - [x] `SpotLight2d`
   - [ ] `TextureLight2d`

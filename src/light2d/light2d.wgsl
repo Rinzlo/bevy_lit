@@ -32,6 +32,7 @@ fn vertex(in: VertexInput) -> VertexOutput {
     )) * vec4<f32>(vertex_position, 1.0);
     out.uv = vertex_position.xy;
     out.color = in.i_color;
+    out.light_direction = normalize(-in.i_model_transpose_col1.yx);
 
     return out;
 }

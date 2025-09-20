@@ -39,9 +39,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
 
-    let light_direction = vec2<f32>(0.0, -1.0);
     let fragment_direction = normalize(light.center - pos);
-    let dot_product = dot(light_direction, fragment_direction);
+    let dot_product = dot(in.light_direction, fragment_direction);
     let angle_diff = acos(clamp(dot_product, -1.0, 1.0));
     let angular_attenuation = attenuation(
         light.inner_angle,

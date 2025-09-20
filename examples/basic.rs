@@ -132,7 +132,6 @@ fn setup(
             falloff: 10.0,
             ..default()
         }),
-        Transform::from_scale(Vec3::splat(2.0)),
     ));
 }
 
