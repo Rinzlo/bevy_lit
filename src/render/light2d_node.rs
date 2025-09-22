@@ -38,14 +38,13 @@ impl ViewNode for Light2dDrawNode {
             return Ok(());
         }
 
-        let mut lighting_texture = world
+        let Some(mut lighting_texture) = world
             .resource::<LightingTextures>()
             .get(&view.retained_view_entity)
-            .expect(&format!(
-                "Expected the lighting texture for view {:?} to exist",
-                view.retained_view_entity.main_entity.id()
-            ))
-            .clone();
+            .map(|t| t.clone())
+        else {
+            return Ok(());
+        };
 
         let mut pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
             label: Some("light2d_pass"),

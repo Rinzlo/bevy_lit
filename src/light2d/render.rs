@@ -7,7 +7,7 @@ use bevy::{
         query::ROQueryItem,
         system::{
             lifetimeless::{Read, SRes},
-            SystemParamItem,
+            StaticSystemParam, SystemParamItem,
         },
     },
     math::{Affine3A, FloatOrd},
@@ -16,21 +16,23 @@ use bevy::{
     prelude::*,
     render::{
         extract_component::{ComponentUniforms, DynamicUniformIndex},
+        render_asset::RenderAssets,
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendComponent,
-            BlendFactor, BlendOperation, BlendState, BufferUsages, ColorTargetState, ColorWrites,
-            FragmentState, IndexFormat, PipelineCache, RawBufferVec, RenderPipelineDescriptor,
-            SamplerBindingType, SamplerDescriptor, ShaderStages, SpecializedRenderPipeline,
-            SpecializedRenderPipelines, TextureFormat, TextureSampleType, VertexState,
-            VertexStepMode,
+            AsBindGroup, BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries,
+            BlendComponent, BlendFactor, BlendOperation, BlendState, BufferUsages,
+            ColorTargetState, ColorWrites, FragmentState, IndexFormat, PipelineCache,
+            PreparedBindGroup, RawBufferVec, RenderPipelineDescriptor, SamplerBindingType,
+            SamplerDescriptor, ShaderStages, SpecializedRenderPipeline, SpecializedRenderPipelines,
+            TextureFormat, TextureSampleType, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, RenderEntity},
+        texture::GpuImage,
         view::{
             ExtractedView, RenderVisibleEntities, RetainedViewEntity, ViewUniform,
             ViewUniformOffset, ViewUniforms,
@@ -45,13 +47,14 @@ use fixedbitset::FixedBitSet;
 
 use crate::{post_process::render::ExtractedLighting2dSettings, render::Light2dPhase};
 
-/// To be used in conjunction with [`CustomLight2dPlugin`]. It provides a high level way
-/// to render 2d light entities with custom shader logic.
-pub trait Light2dMaterial: Component + Default + Clone {
-    fn bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout;
+/// Paired with [`CustomLight2dPlugin`], provides a high level way to create 2d light components entities with custom shader logic
+///
+/// A [`Light2dMaterial`] must implement [`AsBindGroup`] to define how data will be transferred to the GPU and bound in shaders. See the docs for details.
+pub trait Light2dMaterial: AsBindGroup + Component + Default + Clone {
+    /// Returns the light fragment shader
     fn fragment_shader() -> ShaderRef;
-    fn light_size(&self) -> Vec2;
-    fn bind_group(&self, render_device: &RenderDevice, render_queue: &RenderQueue) -> BindGroup;
+    /// Returns the light mesh size (eg. the radius of the light or the size of the lighting texture)
+    fn light_size(&self, images: &RenderAssets<GpuImage>) -> Vec2;
 }
 
 /// Adds the necessary ECS resources and render logic to enable rendering entities using
@@ -73,7 +76,7 @@ impl<L: Light2dMaterial> Plugin for CustomLight2dPlugin<L> {
             .init_resource::<SpecializedRenderPipelines<Light2dPipeline<L>>>()
             .init_resource::<Light2dMeta<L>>()
             .init_resource::<Light2dBatches<L>>()
-            .init_resource::<Light2dMaterialBindGroups<L>>()
+            .init_resource::<PreparedLight2dMaterialBindGroups<L>>()
             .add_systems(ExtractSchedule, extract_light2d_instances::<L>)
             .add_systems(RenderStartup, init_light2d_pipeline::<L>)
             .add_systems(
@@ -365,9 +368,9 @@ impl<L: Light2dMaterial> Default for Light2dMeta<L> {
 }
 
 #[derive(Resource, Deref, DerefMut, Default)]
-pub struct Light2dMaterialBindGroups<L: Light2dMaterial> {
+pub struct PreparedLight2dMaterialBindGroups<L: Light2dMaterial> {
     #[deref]
-    pub bind_groups: EntityHashMap<BindGroup>,
+    pub prepare_bind_groups: EntityHashMap<PreparedBindGroup>,
     marker: PhantomData<L>,
 }
 
@@ -382,11 +385,15 @@ pub fn prepare_light2d_buffers<L: Light2dMaterial>(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
     render_lights2d: Res<RenderLights2dInstances<L>>,
-    mut light2d_bind_groups: ResMut<Light2dMaterialBindGroups<L>>,
+    render_images: Res<RenderAssets<GpuImage>>,
     mut light2d_meta: ResMut<Light2dMeta<L>>,
     mut phases: ResMut<ViewSortedRenderPhases<Light2dPhase>>,
     mut batches: ResMut<Light2dBatches<L>>,
+    mut light2d_bind_groups: ResMut<PreparedLight2dMaterialBindGroups<L>>,
+    system_param: StaticSystemParam<<L>::Param>,
 ) {
+    let mut system_param = system_param.into_inner();
+
     batches.clear();
     light2d_meta.instance_buffer.clear();
 
@@ -416,18 +423,23 @@ pub fn prepare_light2d_buffers<L: Light2dMaterial>(
                 continue;
             };
 
+            let Ok(prepared_bind_group) = light.instance.as_bind_group(
+                &L::bind_group_layout(&render_device),
+                &render_device,
+                &mut system_param,
+            ) else {
+                continue;
+            };
+
             let mut current_batch = batches
                 .entry((*retained_view, item.entity()))
                 .insert(index..index);
 
-            light2d_bind_groups.insert(
-                item.entity(),
-                light.instance.bind_group(&render_device, &render_queue),
-            );
+            light2d_bind_groups.insert(item.entity(), prepared_bind_group);
 
             light2d_meta.instance_buffer.push(Light2dInstance::from(
                 &light.transform,
-                &light.instance.light_size(),
+                &light.instance.light_size(&render_images),
             ));
 
             current_batch.get_mut().end += 1;
@@ -483,7 +495,7 @@ pub struct SetLight2dMaterialBindGroup<L: Light2dMaterial, const I: usize>(Phant
 impl<P: PhaseItem, L: Light2dMaterial, const I: usize> RenderCommand<P>
     for SetLight2dMaterialBindGroup<L, I>
 {
-    type Param = SRes<Light2dMaterialBindGroups<L>>;
+    type Param = SRes<PreparedLight2dMaterialBindGroups<L>>;
     type ViewQuery = ();
     type ItemQuery = ();
 
@@ -496,10 +508,10 @@ impl<P: PhaseItem, L: Light2dMaterial, const I: usize> RenderCommand<P>
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         let bind_groups = bind_groups.into_inner();
-        let Some(bind_group) = bind_groups.get(&item.entity()) else {
+        let Some(prepared_bind_group) = bind_groups.get(&item.entity()) else {
             return RenderCommandResult::Skip;
         };
-        pass.set_bind_group(I, &bind_group, &[]);
+        pass.set_bind_group(I, &prepared_bind_group.bind_group, &[]);
         RenderCommandResult::Success
     }
 }

@@ -16,6 +16,7 @@
 ### Breaking
 
 - `AmbientLight2d.brightness` is now `AmbientLight2d.intensity` to match other light sources
+- `PointLight2d.radius` is now `PointLight2d.outer_radius`
 
 ## 0.7.0
 

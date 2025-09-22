@@ -61,7 +61,7 @@ fn setup(
     ));
 
     commands.spawn((
-        SpotLight2d {
+        PointLight2d {
             intensity: 4.0,
             outer_radius: 512.0,
             ..default()

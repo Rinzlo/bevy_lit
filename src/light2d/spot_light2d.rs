@@ -3,12 +3,10 @@ use bevy::{
     camera::visibility::{add_visibility_class, VisibilityClass},
     prelude::*,
     render::{
-        render_resource::{
-            binding_types::uniform_buffer, BindGroup, BindGroupEntries, BindGroupLayout,
-            BindGroupLayoutEntries, ShaderStages, ShaderType, UniformBuffer,
-        },
-        renderer::{RenderDevice, RenderQueue},
+        render_asset::RenderAssets,
+        render_resource::{AsBindGroup, AsBindGroupShaderType, ShaderType},
         sync_world::SyncToRenderWorld,
+        texture::GpuImage,
     },
     shader::ShaderRef,
 };
@@ -24,9 +22,10 @@ impl Plugin for SpotLight2dPlugin {
 }
 
 /// Represents a spot light in a 2D environment
-#[derive(Component, Clone, Reflect)]
+#[derive(Component, Clone, Reflect, AsBindGroup)]
 #[require(SyncToRenderWorld, Transform, Visibility, VisibilityClass)]
 #[component(on_add = add_visibility_class::<SpotLight2d>)]
+#[uniform(0, SpotLight2dGpuType)]
 pub struct SpotLight2d {
     /// The color of the spot light
     pub color: Color,
@@ -76,30 +75,9 @@ pub struct SpotLight2dGpuType {
     shadows_enabled: u32,
 }
 
-impl Light2dMaterial for SpotLight2d {
-    fn bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
-        render_device.create_bind_group_layout(
-            "spot_light2d_layout",
-            &BindGroupLayoutEntries::single(
-                ShaderStages::FRAGMENT,
-                uniform_buffer::<SpotLight2dGpuType>(false),
-            ),
-        )
-    }
-
-    fn fragment_shader() -> ShaderRef {
-        ShaderRef::Path(
-            AssetPath::from_path_buf(embedded_path!("spot_light2d.wgsl")).with_source("embedded"),
-        )
-    }
-
-    #[inline]
-    fn light_size(&self) -> Vec2 {
-        Vec2::splat(self.outer_radius * 2.0)
-    }
-
-    fn bind_group(&self, render_device: &RenderDevice, render_queue: &RenderQueue) -> BindGroup {
-        let mut buffer = UniformBuffer::from(SpotLight2dGpuType {
+impl AsBindGroupShaderType<SpotLight2dGpuType> for SpotLight2d {
+    fn as_bind_group_shader_type(&self, _images: &RenderAssets<GpuImage>) -> SpotLight2dGpuType {
+        SpotLight2dGpuType {
             color: self.color.to_linear() * self.intensity,
             inner_radius: self.inner_radius,
             outer_radius: self.outer_radius,
@@ -108,14 +86,19 @@ impl Light2dMaterial for SpotLight2d {
             outer_angle: self.outer_angle.to_radians(),
             angular_falloff: self.angular_falloff,
             shadows_enabled: if self.shadows_enabled { 1 } else { 0 },
-        });
+        }
+    }
+}
 
-        buffer.write_buffer(&render_device, &render_queue);
-
-        render_device.create_bind_group(
-            "spot_light2d_bind_group",
-            &Self::bind_group_layout(render_device),
-            &BindGroupEntries::single(buffer.binding().unwrap()),
+impl Light2dMaterial for SpotLight2d {
+    fn fragment_shader() -> ShaderRef {
+        ShaderRef::Path(
+            AssetPath::from_path_buf(embedded_path!("spot_light2d.wgsl")).with_source("embedded"),
         )
+    }
+
+    #[inline]
+    fn light_size(&self, _images: &RenderAssets<GpuImage>) -> Vec2 {
+        Vec2::splat(self.outer_radius * 2.0)
     }
 }

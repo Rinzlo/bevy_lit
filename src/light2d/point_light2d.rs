@@ -3,12 +3,10 @@ use bevy::{
     camera::visibility::{add_visibility_class, VisibilityClass},
     prelude::*,
     render::{
-        render_resource::{
-            binding_types::uniform_buffer, BindGroup, BindGroupEntries, BindGroupLayout,
-            BindGroupLayoutEntries, ShaderStages, ShaderType, UniformBuffer,
-        },
-        renderer::{RenderDevice, RenderQueue},
+        render_asset::RenderAssets,
+        render_resource::{AsBindGroup, AsBindGroupShaderType, ShaderType},
         sync_world::SyncToRenderWorld,
+        texture::GpuImage,
     },
     shader::ShaderRef,
 };
@@ -24,9 +22,10 @@ impl Plugin for PointLight2dPlugin {
 }
 
 /// Represents a point light in a 2D environment
-#[derive(Component, Clone, Reflect)]
+#[derive(Component, Clone, Reflect, AsBindGroup)]
 #[require(SyncToRenderWorld, Transform, Visibility, VisibilityClass)]
 #[component(on_add = add_visibility_class::<PointLight2d>)]
+#[uniform(0, PointLight2dGpuType)]
 pub struct PointLight2d {
     /// The color of the point light
     pub color: Color,
@@ -64,17 +63,19 @@ pub struct PointLight2dGpuType {
     shadows_enabled: u32,
 }
 
-impl Light2dMaterial for PointLight2d {
-    fn bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
-        render_device.create_bind_group_layout(
-            "point_light2d_layout",
-            &BindGroupLayoutEntries::single(
-                ShaderStages::FRAGMENT,
-                uniform_buffer::<PointLight2dGpuType>(false),
-            ),
-        )
+impl AsBindGroupShaderType<PointLight2dGpuType> for PointLight2d {
+    fn as_bind_group_shader_type(&self, _images: &RenderAssets<GpuImage>) -> PointLight2dGpuType {
+        PointLight2dGpuType {
+            color: self.color.to_linear() * self.intensity,
+            inner_radius: self.inner_radius,
+            outer_radius: self.outer_radius,
+            falloff: self.falloff,
+            shadows_enabled: if self.shadows_enabled { 1 } else { 0 },
+        }
     }
+}
 
+impl Light2dMaterial for PointLight2d {
     fn fragment_shader() -> ShaderRef {
         ShaderRef::Path(
             AssetPath::from_path_buf(embedded_path!("point_light2d.wgsl")).with_source("embedded"),
@@ -82,25 +83,7 @@ impl Light2dMaterial for PointLight2d {
     }
 
     #[inline]
-    fn light_size(&self) -> Vec2 {
+    fn light_size(&self, _images: &RenderAssets<GpuImage>) -> Vec2 {
         Vec2::splat(self.outer_radius * 2.0)
-    }
-
-    fn bind_group(&self, render_device: &RenderDevice, render_queue: &RenderQueue) -> BindGroup {
-        let mut buffer = UniformBuffer::from(PointLight2dGpuType {
-            color: self.color.to_linear() * self.intensity,
-            inner_radius: self.inner_radius,
-            outer_radius: self.outer_radius,
-            falloff: self.falloff,
-            shadows_enabled: if self.shadows_enabled { 1 } else { 0 },
-        });
-
-        buffer.write_buffer(&render_device, &render_queue);
-
-        render_device.create_bind_group(
-            "point_light2d_bind_group",
-            &Self::bind_group_layout(render_device),
-            &BindGroupEntries::single(buffer.binding().unwrap()),
-        )
     }
 }
