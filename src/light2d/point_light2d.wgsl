@@ -11,6 +11,7 @@
 }
 
 struct PointLight2d {
+    color: vec4<f32>,
     inner_radius: f32,
     outer_radius: f32,
     falloff: f32,
@@ -22,8 +23,9 @@ struct PointLight2d {
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let pos = frag_to_world(in.clip_position / settings.scale, view).xy;
+    let light_center = in.translation_rotation.xy;
 
-    let light_dist = distance(pos, in.center);
+    let light_dist = distance(pos, light_center);
 
     let radial_attenuation = attenuation(
         light.inner_radius,
@@ -38,14 +40,14 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let sdf = get_sdf(pos);
 
-    var light_contrib = in.color.rgb * radial_attenuation;
+    var light_contrib = light.color.rgb * radial_attenuation;
 
     // inside occluder
     if sdf <= 0.0 {
         light_contrib *= select(0.0, 1.0, bool(settings.tint_occluders));
     } else {
         if bool(light.shadows_enabled) {
-            light_contrib *= raymarch(pos, in.center);
+            light_contrib *= raymarch(pos, light_center);
         }
     }
 
@@ -54,5 +56,5 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         light_contrib += light_contrib * edge_intensity * 1.0;
     }
 
-    return vec4<f32>(light_contrib, sdf);
+    return vec4<f32>(light_contrib, 1.0);
 }

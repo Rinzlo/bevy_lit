@@ -12,9 +12,7 @@ struct VertexInput {
     @location(0) i_model_transpose_col0: vec4<f32>,
     @location(1) i_model_transpose_col1: vec4<f32>,
     @location(2) i_model_transpose_col2: vec4<f32>,
-    @location(3) i_color: vec4<f32>,
-    @location(4) i_center: vec2<f32>,
-    @location(5) i_direction: vec2<f32>,
+    @location(3) i_original_translation_rotation: vec4<f32>,
 }
 
 @vertex
@@ -33,9 +31,7 @@ fn vertex(in: VertexInput) -> VertexOutput {
         in.i_model_transpose_col2,
     )) * vec4<f32>(vertex_position, 1.0);
     out.uv = vertex_position.xy;
-    out.color = in.i_color;
-    out.center = in.i_center;
-    out.direction = in.i_direction;
+    out.translation_rotation = in.i_original_translation_rotation;
 
     return out;
 }

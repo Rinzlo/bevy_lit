@@ -21,9 +21,7 @@
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) uv: vec2<f32>,
-    @location(1) @interpolate(flat) color: vec4<f32>,
-    @location(2) @interpolate(flat) center: vec2<f32>,
-    @location(3) @interpolate(flat) direction: vec2<f32>,
+    @location(2) @interpolate(flat) translation_rotation: vec4<f32>,
 }
 
 fn attenuation(inner: f32, outer: f32, falloff: f32, diff: f32) -> f32 {

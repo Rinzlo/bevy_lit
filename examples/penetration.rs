@@ -61,12 +61,13 @@ fn setup(
     ));
 
     commands.spawn((
-        PointLight2d {
+        SpotLight2d {
             intensity: 4.0,
             outer_radius: 512.0,
             ..default()
         },
         CursorLight,
+        Transform::default().with_rotation(Quat::from_rotation_z(-90_f32.to_radians())),
     ));
 
     let rect = meshes.add(Rectangle::from_length(100.));

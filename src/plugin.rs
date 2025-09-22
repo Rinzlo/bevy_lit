@@ -1,7 +1,7 @@
 use bevy::{prelude::*, shader::load_shader_library};
 
 use crate::{
-    light2d::{point_light2d::PointLight2d, render::Light2dPlugin, spot_light2d::SpotLight2d},
+    light2d::{point_light2d::PointLight2dPlugin, spot_light2d::SpotLight2dPlugin},
     post_process::Lighting2dSettingsPlugin,
     render::Light2dRenderPlugin,
     shadows2d::Shadows2dPlugin,
@@ -22,8 +22,8 @@ impl Plugin for Lighting2dPlugin {
             Light2dRenderPlugin,
             Lighting2dSettingsPlugin,
             Shadows2dPlugin,
-            Light2dPlugin::<PointLight2d>::default(),
-            Light2dPlugin::<SpotLight2d>::default(),
+            PointLight2dPlugin,
+            SpotLight2dPlugin,
         ));
     }
 }

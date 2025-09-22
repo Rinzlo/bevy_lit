@@ -933,7 +933,6 @@ dependencies = [
  "bevy_voronoi",
  "bytemuck",
  "fixedbitset",
- "radsort",
  "rand",
 ]
 

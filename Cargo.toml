@@ -19,7 +19,6 @@ bevy = { version = "0.17.0-rc.1", default-features = false, features = [
 bevy_voronoi = { path = "../voronoi" }
 bytemuck = "1.23.2"
 fixedbitset = "0.5.7"
-radsort = "0.1.1"
 
 [dev-dependencies]
 bevy = { version = "0.17.0-rc.1", features = [

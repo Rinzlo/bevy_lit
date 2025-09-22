@@ -6,7 +6,11 @@ mod settings;
 mod shadows2d;
 
 pub mod prelude {
-    pub use crate::light2d::{point_light2d::PointLight2d, spot_light2d::SpotLight2d};
+    pub use crate::light2d::{
+        point_light2d::PointLight2d,
+        render::{CustomLight2dPlugin, Light2dMaterial},
+        spot_light2d::SpotLight2d,
+    };
     pub use crate::plugin::Lighting2dPlugin;
     pub use crate::settings::{
         AmbientLight2d, Lighting2dSettings, PenetrationSettings, RaymarchSettings,

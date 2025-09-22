@@ -8,7 +8,7 @@
 - [ ] New light sources:
   - [x] `SpotLight2d`
   - [ ] `TextureLight2d`
-  - [ ] `DirectionalLight2d`
+- [x] Introduces `Light2dMaterial` and `CustomLight2dPlugin` that provide high level abstraction to create custom 2d lights
 - [ ] New `LitMaterial` Component with support for normal maps and custom materials
 - [ ] WebGL2 support is back
 - [ ] Occlusion layers

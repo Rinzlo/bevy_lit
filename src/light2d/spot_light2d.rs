@@ -1,5 +1,5 @@
 use bevy::{
-    asset::load_embedded_asset,
+    asset::{embedded_asset, embedded_path, AssetPath},
     camera::visibility::{add_visibility_class, VisibilityClass},
     prelude::*,
     render::{
@@ -10,10 +10,20 @@ use bevy::{
         renderer::{RenderDevice, RenderQueue},
         sync_world::SyncToRenderWorld,
     },
+    shader::ShaderRef,
 };
 
-use crate::light2d::render::Light2dType;
+use crate::light2d::render::{CustomLight2dPlugin, Light2dMaterial};
 
+pub struct SpotLight2dPlugin;
+impl Plugin for SpotLight2dPlugin {
+    fn build(&self, app: &mut App) {
+        embedded_asset!(app, "spot_light2d.wgsl");
+        app.add_plugins(CustomLight2dPlugin::<SpotLight2d>::default());
+    }
+}
+
+/// Represents a spot light in a 2D environment
 #[derive(Component, Clone, Reflect)]
 #[require(SyncToRenderWorld, Transform, Visibility, VisibilityClass)]
 #[component(on_add = add_visibility_class::<SpotLight2d>)]
@@ -56,6 +66,7 @@ impl Default for SpotLight2d {
 
 #[derive(ShaderType)]
 pub struct SpotLight2dGpuType {
+    color: LinearRgba,
     inner_radius: f32,
     outer_radius: f32,
     radial_falloff: f32,
@@ -65,7 +76,7 @@ pub struct SpotLight2dGpuType {
     shadows_enabled: u32,
 }
 
-impl Light2dType for SpotLight2d {
+impl Light2dMaterial for SpotLight2d {
     fn bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
         render_device.create_bind_group_layout(
             "spot_light2d_layout",
@@ -76,12 +87,20 @@ impl Light2dType for SpotLight2d {
         )
     }
 
-    fn fragment_shader(asset_server: &AssetServer) -> Handle<Shader> {
-        load_embedded_asset!(asset_server, "spot_light2d.wgsl")
+    fn fragment_shader() -> ShaderRef {
+        ShaderRef::Path(
+            AssetPath::from_path_buf(embedded_path!("spot_light2d.wgsl")).with_source("embedded"),
+        )
+    }
+
+    #[inline]
+    fn light_size(&self) -> Vec2 {
+        Vec2::splat(self.outer_radius * 2.0)
     }
 
     fn bind_group(&self, render_device: &RenderDevice, render_queue: &RenderQueue) -> BindGroup {
         let mut buffer = UniformBuffer::from(SpotLight2dGpuType {
+            color: self.color.to_linear() * self.intensity,
             inner_radius: self.inner_radius,
             outer_radius: self.outer_radius,
             radial_falloff: self.radial_falloff,
@@ -98,14 +117,5 @@ impl Light2dType for SpotLight2d {
             &Self::bind_group_layout(render_device),
             &BindGroupEntries::single(buffer.binding().unwrap()),
         )
-    }
-
-    #[inline]
-    fn quad_size(&self) -> Vec2 {
-        Vec2::splat(self.outer_radius * 2.0)
-    }
-
-    fn color(&self) -> LinearRgba {
-        self.color.to_linear() * self.intensity
     }
 }
