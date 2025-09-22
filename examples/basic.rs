@@ -99,13 +99,13 @@ fn setup(
         ));
     }
 
-    let moving_point_light = Light2d::from(PointLight2d {
+    let moving_point_light = PointLight2d {
         color: Color::from(BLUE_600),
         intensity: 2.0,
         outer_radius: 1100.0,
         falloff: 3.0,
         ..default()
-    });
+    };
 
     commands.spawn((
         MovingLights,
@@ -125,13 +125,14 @@ fn setup(
 
     commands.spawn((
         CursorLight,
-        Light2d::from(PointLight2d {
+        PointLight2d {
             color: Color::from(YELLOW_600),
             intensity: 2.0,
             outer_radius: 400.0,
             falloff: 10.0,
             ..default()
-        }),
+        },
+        Transform::default().with_scale(Vec3::new(2.0, 1.0, 1.0)),
     ));
 }
 

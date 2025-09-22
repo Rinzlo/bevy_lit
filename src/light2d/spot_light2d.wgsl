@@ -11,7 +11,6 @@
 }
 
 struct SpotLight2d {
-    center: vec2<f32>,
     inner_radius: f32,
     outer_radius: f32,
     radial_falloff: f32,
@@ -27,7 +26,7 @@ struct SpotLight2d {
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let pos = frag_to_world(in.clip_position / settings.scale, view).xy;
 
-    let light_dist = distance(pos, light.center);
+    let light_dist = distance(pos, in.center);
     let radial_attenuation = attenuation(
         light.inner_radius,
         light.outer_radius,
@@ -39,8 +38,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
 
-    let fragment_direction = normalize(light.center - pos);
-    let dot_product = dot(in.light_direction, fragment_direction);
+    let fragment_direction = normalize(in.center - pos);
+    let dot_product = dot(in.direction, fragment_direction);
     let angle_diff = acos(clamp(dot_product, -1.0, 1.0));
     let angular_attenuation = attenuation(
         light.inner_angle,
@@ -62,7 +61,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         light_contrib *= select(0.0, 1.0, bool(settings.tint_occluders));
     } else {
         if bool(light.shadows_enabled) {
-            light_contrib *= raymarch(pos, light.center);
+            light_contrib *= raymarch(pos, in.center);
         }
     }
 

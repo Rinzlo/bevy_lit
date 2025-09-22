@@ -69,39 +69,38 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
         },
         LightOccluder2d::new(lettering_handle),
     ));
+    let point_light = PointLight2d {
+        intensity: 2.0,
+        outer_radius: 1100.0,
+        falloff: 3.0,
+        color: Color::from(BLUE_600),
+        ..default()
+    };
 
-    commands
-        .spawn((MovingLights, Transform::default(), Visibility::default()))
-        .with_children(|builder| {
-            let point_light = Light2d::Point {
-                intensity: 2.0,
-                outer_radius: 1100.0,
-                inner_radius: 0.0,
-                falloff: 3.0,
-                color: Color::from(BLUE_600),
-                shadows_enabled: true,
-            };
-
-            builder.spawn((
+    commands.spawn((
+        MovingLights,
+        Transform::default(),
+        Visibility::default(),
+        children![
+            (
                 point_light.clone(),
                 Transform::from_xyz(-X_EXTENT + 50. / 2., 0.0, 0.0),
-            ));
-
-            builder.spawn((
+            ),
+            (
                 point_light,
                 Transform::from_xyz(X_EXTENT + 50. / 2., 0.0, 0.0),
-            ));
-        });
+            )
+        ],
+    ));
 
     commands.spawn((
         CursorLight,
-        Light2d::Point {
+        SpotLight2d {
             intensity: 2.0,
             outer_radius: 400.0,
-            inner_radius: 0.0,
-            falloff: 10.0,
+            radial_falloff: 10.0,
             color: Color::from(YELLOW_600),
-            shadows_enabled: true,
+            ..default()
         },
     ));
 }

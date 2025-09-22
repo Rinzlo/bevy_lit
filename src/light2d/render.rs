@@ -1,7 +1,7 @@
-use std::ops::Range;
+use std::{hash::Hash, marker::PhantomData, ops::Range};
 
 use bevy::{
-    asset::load_embedded_asset,
+    asset::{embedded_asset, load_embedded_asset},
     ecs::{
         entity::EntityHashMap,
         query::ROQueryItem,
@@ -10,7 +10,6 @@ use bevy::{
             SystemParamItem,
         },
     },
-    image::BevyDefault,
     math::{Affine3A, FloatOrd},
     mesh::{VertexBufferLayout, VertexFormat},
     platform::collections::HashMap,
@@ -18,117 +17,133 @@ use bevy::{
     render::{
         extract_component::{ComponentUniforms, DynamicUniformIndex},
         render_phase::{
-            DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand, RenderCommandResult,
-            SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
+            AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
+            RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendComponent,
             BlendFactor, BlendOperation, BlendState, BufferUsages, ColorTargetState, ColorWrites,
             FragmentState, IndexFormat, PipelineCache, RawBufferVec, RenderPipelineDescriptor,
-            SamplerBindingType, SamplerDescriptor, ShaderStages, ShaderType,
-            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat,
-            TextureSampleType, UniformBuffer, VertexState, VertexStepMode,
+            SamplerBindingType, SamplerDescriptor, ShaderStages, SpecializedRenderPipeline,
+            SpecializedRenderPipelines, TextureFormat, TextureSampleType, VertexState,
+            VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, RenderEntity},
         view::{
-            ExtractedView, RenderVisibleEntities, RetainedViewEntity, ViewTarget, ViewUniform,
+            ExtractedView, RenderVisibleEntities, RetainedViewEntity, ViewUniform,
             ViewUniformOffset, ViewUniforms,
         },
-        Extract,
+        Extract, Render, RenderApp, RenderStartup, RenderSystems,
     },
+    shader::load_shader_library,
 };
 use bevy_voronoi::prelude::VoronoiTextures;
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
 
-use crate::{
-    light2d::Light2d, post_process::render::ExtractedLighting2dSettings, render::Light2dPhase,
-};
+use crate::{post_process::render::ExtractedLighting2dSettings, render::Light2dPhase};
 
-#[derive(Resource)]
-pub struct Light2dPipeline {
-    shader: Handle<Shader>,
-    view_layout: BindGroupLayout,
-    point_light_shader: Handle<Shader>,
-    spot_light_shader: Handle<Shader>,
-    point_material_layout: BindGroupLayout,
-    spot_material_layout: BindGroupLayout,
+pub trait Light2dType: Component + Default + Clone {
+    fn bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout;
+    fn fragment_shader(asset_server: &AssetServer) -> Handle<Shader>;
+    fn bind_group(&self, render_device: &RenderDevice, render_queue: &RenderQueue) -> BindGroup;
+    fn quad_size(&self) -> Vec2;
+    fn color(&self) -> LinearRgba;
 }
 
-pub fn init_light2d_pipeline(
+pub struct Light2dPlugin<L: Light2dType>(PhantomData<L>);
+
+impl<L: Light2dType> Default for Light2dPlugin<L> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<L: Light2dType> Plugin for Light2dPlugin<L> {
+    fn build(&self, app: &mut App) {
+        load_shader_library!(app, "light2d_common.wgsl");
+        embedded_asset!(app, "light2d.wgsl");
+        embedded_asset!(app, "point_light2d.wgsl");
+        embedded_asset!(app, "spot_light2d.wgsl");
+
+        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
+
+        render_app
+            .init_resource::<RenderLights2dInstances<L>>()
+            .init_resource::<SpecializedRenderPipelines<Light2dPipeline<L>>>()
+            .init_resource::<Light2dMeta<L>>()
+            .init_resource::<Light2dBatches<L>>()
+            .init_resource::<Light2dMaterialBindGroups<L>>()
+            .add_systems(ExtractSchedule, extract_light2d_instances::<L>)
+            .add_systems(RenderStartup, init_light2d_pipeline::<L>)
+            .add_systems(
+                Render,
+                (
+                    queue_light2d_instances::<L>.in_set(RenderSystems::Queue),
+                    (
+                        prepare_light2d_view_bind_groups::<L>,
+                        prepare_light2d_buffers::<L>,
+                    )
+                        .in_set(RenderSystems::PrepareBindGroups),
+                ),
+            )
+            .add_render_command::<Light2dPhase, DrawLight2dMesh<L>>();
+    }
+}
+
+#[derive(Resource)]
+pub struct Light2dPipeline<L: Light2dType> {
+    shader: Handle<Shader>,
+    view_layout: BindGroupLayout,
+    light_shader: Handle<Shader>,
+    light_layout: BindGroupLayout,
+    marker: PhantomData<L>,
+}
+
+pub fn init_light2d_pipeline<L: Light2dType>(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
     asset_server: Res<AssetServer>,
 ) {
-    let view_layout = render_device.create_bind_group_layout(
-        "light2d_view_layout",
-        &BindGroupLayoutEntries::sequential(
-            ShaderStages::VERTEX_FRAGMENT,
-            (
-                uniform_buffer::<ViewUniform>(true),
-                uniform_buffer::<ExtractedLighting2dSettings>(true)
-                    .visibility(ShaderStages::FRAGMENT),
-                // lighting texture
-                texture_2d(TextureSampleType::Float { filterable: true })
-                    .visibility(ShaderStages::FRAGMENT),
-                sampler(SamplerBindingType::Filtering).visibility(ShaderStages::FRAGMENT),
+    commands.insert_resource(Light2dPipeline::<L> {
+        shader: load_embedded_asset!(asset_server.as_ref(), "light2d.wgsl"),
+        view_layout: render_device.create_bind_group_layout(
+            "light2d_view_layout",
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::VERTEX_FRAGMENT,
+                (
+                    uniform_buffer::<ViewUniform>(true),
+                    uniform_buffer::<ExtractedLighting2dSettings>(true)
+                        .visibility(ShaderStages::FRAGMENT),
+                    // lighting texture
+                    texture_2d(TextureSampleType::Float { filterable: true })
+                        .visibility(ShaderStages::FRAGMENT),
+                    sampler(SamplerBindingType::Filtering).visibility(ShaderStages::FRAGMENT),
+                ),
             ),
         ),
-    );
-
-    let point_layout = render_device.create_bind_group_layout(
-        "point_light2d_layout",
-        &BindGroupLayoutEntries::single(
-            ShaderStages::FRAGMENT,
-            uniform_buffer::<PointLight2dGpuType>(false),
-        ),
-    );
-
-    let spot_layout = render_device.create_bind_group_layout(
-        "spot_light2d_layout",
-        &BindGroupLayoutEntries::single(
-            ShaderStages::FRAGMENT,
-            uniform_buffer::<SpotLight2dGpuType>(false),
-        ),
-    );
-
-    commands.insert_resource(Light2dPipeline {
-        shader: load_embedded_asset!(asset_server.as_ref(), "light2d.wgsl"),
-        point_light_shader: load_embedded_asset!(asset_server.as_ref(), "point_light2d.wgsl"),
-        spot_light_shader: load_embedded_asset!(asset_server.as_ref(), "spot_light2d.wgsl"),
-        view_layout,
-        point_material_layout: point_layout,
-        spot_material_layout: spot_layout,
+        light_shader: L::fragment_shader(asset_server.as_ref()),
+        light_layout: L::bind_group_layout(&render_device),
+        marker: PhantomData,
     });
-}
-
-#[derive(Eq, PartialEq, Hash, Clone, Copy, Reflect)]
-pub enum Light2dType {
-    Point,
-    Spot,
 }
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy)]
 pub struct Light2dPipelineKey {
     pub hdr: bool,
-    pub light2d_type: Light2dType,
 }
 
-impl SpecializedRenderPipeline for Light2dPipeline {
+impl<L: Light2dType> SpecializedRenderPipeline for Light2dPipeline<L> {
     type Key = Light2dPipelineKey;
 
-    fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
+    fn specialize(&self, _key: Self::Key) -> RenderPipelineDescriptor {
         RenderPipelineDescriptor {
             label: Some("light2d_pipeline".into()),
-            layout: vec![
-                self.view_layout.clone(),
-                match key.light2d_type {
-                    Light2dType::Point => self.point_material_layout.clone(),
-                    Light2dType::Spot => self.spot_material_layout.clone(),
-                },
-            ],
+            layout: vec![self.view_layout.clone(), self.light_layout.clone()],
             vertex: VertexState {
                 shader: self.shader.clone(),
                 shader_defs: vec![],
@@ -142,24 +157,21 @@ impl SpecializedRenderPipeline for Light2dPipeline {
                         VertexFormat::Float32x4,
                         // @location(2) i_model_transpose_col2: vec4<f32>,
                         VertexFormat::Float32x4,
-                        // @location(3) i_model_color: vec4<f32>,
+                        // @location(3) i_color: vec4<f32>,
                         VertexFormat::Float32x4,
+                        // @location(4) i_center: vec4<f32>,
+                        VertexFormat::Float32x2,
+                        // @location(5) i_direction: vec4<f32>,
+                        VertexFormat::Float32x2,
                     ],
                 )],
             },
             fragment: Some(FragmentState {
-                shader: match key.light2d_type {
-                    Light2dType::Point => self.point_light_shader.clone(),
-                    Light2dType::Spot => self.spot_light_shader.clone(),
-                },
+                shader: self.light_shader.clone(),
                 shader_defs: vec![],
                 entry_point: Some("fragment".into()),
                 targets: vec![Some(ColorTargetState {
-                    format: if true {
-                        ViewTarget::TEXTURE_FORMAT_HDR
-                    } else {
-                        TextureFormat::bevy_default()
-                    },
+                    format: TextureFormat::Rgba16Float,
                     blend: Some(BlendState {
                         color: BlendComponent {
                             src_factor: BlendFactor::One,
@@ -184,43 +196,19 @@ impl SpecializedRenderPipeline for Light2dPipeline {
     }
 }
 
-pub struct ExtractedLight2d {
+pub struct ExtractedLight2d<L: Light2dType> {
     pub transform: GlobalTransform,
-    pub color: LinearRgba,
-    pub shadows_enabled: u32,
-    pub kind: ExtractedLight2dKind,
-}
-
-pub enum ExtractedLight2dKind {
-    Point {
-        inner_radius: f32,
-        outer_radius: f32,
-        falloff: f32,
-    },
-    Spot {
-        inner_radius: f32,
-        outer_radius: f32,
-        radial_falloff: f32,
-        inner_angle: f32,
-        outer_angle: f32,
-        angular_falloff: f32,
-    },
+    pub instance: L,
 }
 
 #[derive(Resource, Deref, DerefMut, Default)]
-pub struct RenderLights2dInstances(HashMap<(Entity, MainEntity), ExtractedLight2d>);
+pub struct RenderLights2dInstances<L: Light2dType>(
+    HashMap<(Entity, MainEntity), ExtractedLight2d<L>>,
+);
 
-pub fn extract_light2d_instances(
-    mut render_light_instances: ResMut<RenderLights2dInstances>,
-    light_query: Extract<
-        Query<(
-            Entity,
-            RenderEntity,
-            &ViewVisibility,
-            &Light2d,
-            &GlobalTransform,
-        )>,
-    >,
+pub fn extract_light2d_instances<L: Light2dType>(
+    mut render_light_instances: ResMut<RenderLights2dInstances<L>>,
+    light_query: Extract<Query<(Entity, RenderEntity, &ViewVisibility, &L, &GlobalTransform)>>,
 ) {
     render_light_instances.clear();
 
@@ -228,71 +216,27 @@ pub fn extract_light2d_instances(
         if !view_visibility.get() {
             continue;
         }
-
-        let (kind, color, shadows_enabled) = match light {
-            Light2d::Point {
-                color,
-                intensity,
-                shadows_enabled,
-                inner_radius,
-                outer_radius,
-                falloff,
-            } => (
-                ExtractedLight2dKind::Point {
-                    inner_radius: *inner_radius,
-                    outer_radius: *outer_radius,
-                    falloff: *falloff,
-                },
-                color.to_linear() * *intensity,
-                *shadows_enabled,
-            ),
-            Light2d::Spot {
-                color,
-                intensity,
-                inner_radius,
-                outer_radius,
-                radial_falloff,
-                inner_angle,
-                outer_angle,
-                angular_falloff,
-                shadows_enabled,
-            } => (
-                ExtractedLight2dKind::Spot {
-                    inner_radius: *inner_radius,
-                    outer_radius: *outer_radius,
-                    radial_falloff: *radial_falloff,
-                    inner_angle: inner_angle.to_radians(),
-                    outer_angle: outer_angle.to_radians(),
-                    angular_falloff: *angular_falloff,
-                },
-                color.to_linear() * *intensity,
-                *shadows_enabled,
-            ),
-        };
-
         render_light_instances.insert(
             (render_entity, entity.into()),
-            ExtractedLight2d {
-                kind,
-                color,
-                shadows_enabled: if shadows_enabled { 1 } else { 0 },
+            ExtractedLight2d::<L> {
                 transform: *transform,
+                instance: light.clone(),
             },
         );
     }
 }
 
-pub fn queue_light2d_instances(
+pub fn queue_light2d_instances<L: Light2dType>(
     mut view_entities: Local<FixedBitSet>,
     draw_functions: Res<DrawFunctions<Light2dPhase>>,
-    light2d_pipeline: Res<Light2dPipeline>,
-    mut pipelines: ResMut<SpecializedRenderPipelines<Light2dPipeline>>,
+    light2d_pipeline: Res<Light2dPipeline<L>>,
+    mut pipelines: ResMut<SpecializedRenderPipelines<Light2dPipeline<L>>>,
     pipeline_cache: Res<PipelineCache>,
-    render_light2d_instances: Res<RenderLights2dInstances>,
+    render_light2d_instances: Res<RenderLights2dInstances<L>>,
     mut light2d_render_phases: ResMut<ViewSortedRenderPhases<Light2dPhase>>,
     mut views: Query<(&RenderVisibleEntities, &ExtractedView)>,
 ) {
-    let draw_light_function = draw_functions.read().id::<DrawLight2dMesh>();
+    let draw_light_function = draw_functions.read().id::<DrawLight2dMesh<L>>();
 
     for (visible_entities, view) in &mut views {
         let Some(light2d_phase) = light2d_render_phases.get_mut(&view.retained_view_entity) else {
@@ -302,7 +246,7 @@ pub fn queue_light2d_instances(
         view_entities.clear();
         view_entities.extend(
             visible_entities
-                .iter::<Light2d>()
+                .iter::<L>()
                 .map(|(_, e)| e.index() as usize),
         );
 
@@ -315,13 +259,7 @@ pub fn queue_light2d_instances(
                 continue;
             }
 
-            let view_key = Light2dPipelineKey {
-                hdr: view.hdr,
-                light2d_type: match render_light.kind {
-                    ExtractedLight2dKind::Point { .. } => Light2dType::Point,
-                    ExtractedLight2dKind::Spot { .. } => Light2dType::Spot,
-                },
-            };
+            let view_key = Light2dPipelineKey { hdr: view.hdr };
 
             let pipeline = pipelines.specialize(&pipeline_cache, &light2d_pipeline, view_key);
 
@@ -340,12 +278,16 @@ pub fn queue_light2d_instances(
 }
 
 #[derive(Component, Deref, DerefMut)]
-pub struct Light2dViewBindGroup(pub BindGroup);
+pub struct Light2dViewBindGroup<L: Light2dType> {
+    #[deref]
+    pub bind_group: BindGroup,
+    marker: PhantomData<L>,
+}
 
-pub fn prepare_light2d_view_bind_groups(
+pub fn prepare_light2d_view_bind_groups<L: Light2dType>(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
-    light2d_pipeline: Res<Light2dPipeline>,
+    light2d_pipeline: Res<Light2dPipeline<L>>,
     view_uniforms: Res<ViewUniforms>,
     voronoi_textures: Res<VoronoiTextures>,
     lighting2d_settings: Res<ComponentUniforms<ExtractedLighting2dSettings>>,
@@ -376,9 +318,10 @@ pub fn prepare_light2d_view_bind_groups(
             )),
         );
 
-        commands
-            .entity(entity)
-            .insert(Light2dViewBindGroup(view_bind_group));
+        commands.entity(entity).insert(Light2dViewBindGroup::<L> {
+            bind_group: view_bind_group,
+            marker: PhantomData,
+        });
     }
 }
 
@@ -388,11 +331,15 @@ struct Light2dInstance {
     // Affine 4x3 transposed to 3x4
     pub i_model_transpose: [Vec4; 3],
     pub i_color: [f32; 4],
+    pub i_center: [f32; 2],
+    pub i_direction: [f32; 2],
 }
 
 impl Light2dInstance {
-    fn from(transform: &Affine3A, color: &LinearRgba) -> Self {
+    fn from(transform: &Affine3A, center: &Vec2, color: &LinearRgba) -> Self {
         let transpose_model_3x3 = transform.matrix3.transpose();
+
+        // println!("{}", (-transpose_model_3x3.y_axis.yx()).normalize());
 
         Self {
             i_model_transpose: [
@@ -401,67 +348,55 @@ impl Light2dInstance {
                 transpose_model_3x3.z_axis.extend(transform.translation.z),
             ],
             i_color: color.to_f32_array(),
+            i_center: center.to_array(),
+            i_direction: (-transpose_model_3x3.y_axis.yx()).normalize().to_array(),
         }
     }
 }
 
 #[derive(Resource)]
-pub struct Light2dMeta {
+pub struct Light2dMeta<L: Light2dType> {
     index_buffer: RawBufferVec<u32>,
     instance_buffer: RawBufferVec<Light2dInstance>,
+    marker: PhantomData<L>,
 }
 
-impl Default for Light2dMeta {
+impl<L: Light2dType> Default for Light2dMeta<L> {
     fn default() -> Self {
         Self {
             index_buffer: RawBufferVec::<u32>::new(BufferUsages::INDEX),
             instance_buffer: RawBufferVec::<Light2dInstance>::new(BufferUsages::VERTEX),
+            marker: PhantomData,
         }
     }
 }
 
-#[derive(ShaderType)]
-pub struct PointLight2dGpuType {
-    center: Vec2,
-    inner_radius: f32,
-    outer_radius: f32,
-    falloff: f32,
-    shadows_enabled: u32,
-}
-
-#[derive(ShaderType)]
-pub struct SpotLight2dGpuType {
-    center: Vec2,
-    inner_radius: f32,
-    outer_radius: f32,
-    radial_falloff: f32,
-    inner_angle: f32,
-    outer_angle: f32,
-    angular_falloff: f32,
-    shadows_enabled: u32,
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct Light2dMaterialBindGroups<L: Light2dType> {
+    #[deref]
+    pub bind_groups: EntityHashMap<BindGroup>,
+    marker: PhantomData<L>,
 }
 
 #[derive(Resource, Deref, DerefMut, Default)]
-pub struct Light2dMaterialBindGroups(pub EntityHashMap<BindGroup>);
+pub struct Light2dBatches<L: Light2dType> {
+    #[deref]
+    pub batches: HashMap<(RetainedViewEntity, Entity), Range<u32>>,
+    marker: PhantomData<L>,
+}
 
-#[derive(Resource, Deref, DerefMut, Default)]
-pub struct Light2dBatches(pub HashMap<(RetainedViewEntity, Entity), Range<u32>>);
-
-pub fn prepare_light2d_buffers(
+pub fn prepare_light2d_buffers<L: Light2dType>(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
-    light2d_pipeline: Res<Light2dPipeline>,
-    render_lights2d: Res<RenderLights2dInstances>,
-    mut light2d_bind_groups: ResMut<Light2dMaterialBindGroups>,
-    mut light2d_meta: ResMut<Light2dMeta>,
+    render_lights2d: Res<RenderLights2dInstances<L>>,
+    mut light2d_bind_groups: ResMut<Light2dMaterialBindGroups<L>>,
+    mut light2d_meta: ResMut<Light2dMeta<L>>,
     mut phases: ResMut<ViewSortedRenderPhases<Light2dPhase>>,
-    mut batches: ResMut<Light2dBatches>,
+    mut batches: ResMut<Light2dBatches<L>>,
 ) {
     batches.clear();
-    // Clear the light2d instances
     light2d_meta.instance_buffer.clear();
 
-    // Index buffer indices
     let mut index = 0;
 
     for (retained_view, phase) in phases.iter_mut() {
@@ -476,60 +411,8 @@ pub fn prepare_light2d_buffers(
                 .entry((*retained_view, item.entity()))
                 .insert(index..index);
 
-            let (quad_size, light_bind_group) = match light.kind {
-                ExtractedLight2dKind::Point {
-                    inner_radius,
-                    outer_radius,
-                    falloff,
-                } => {
-                    let mut buffer = UniformBuffer::from(PointLight2dGpuType {
-                        inner_radius,
-                        outer_radius,
-                        falloff,
-                        center: light.transform.translation().xy(),
-                        shadows_enabled: light.shadows_enabled,
-                    });
+            let quad_size = light.instance.quad_size();
 
-                    buffer.write_buffer(&render_device, &render_queue);
-
-                    let light_bind_group = render_device.create_bind_group(
-                        "point_light2d_bind_group",
-                        &light2d_pipeline.point_material_layout,
-                        &BindGroupEntries::single(buffer.binding().unwrap()),
-                    );
-
-                    (Vec2::splat(outer_radius * 2.0), light_bind_group)
-                }
-                ExtractedLight2dKind::Spot {
-                    inner_radius,
-                    outer_radius,
-                    radial_falloff,
-                    inner_angle,
-                    outer_angle,
-                    angular_falloff,
-                } => {
-                    let mut buffer = UniformBuffer::from(SpotLight2dGpuType {
-                        inner_radius,
-                        outer_radius,
-                        radial_falloff,
-                        inner_angle,
-                        outer_angle,
-                        angular_falloff,
-                        center: light.transform.translation().xy(),
-                        shadows_enabled: light.shadows_enabled,
-                    });
-
-                    buffer.write_buffer(&render_device, &render_queue);
-
-                    let light_bind_group = render_device.create_bind_group(
-                        "spot_light2d_bind_group",
-                        &light2d_pipeline.spot_material_layout,
-                        &BindGroupEntries::single(buffer.binding().unwrap()),
-                    );
-
-                    (Vec2::splat(outer_radius * 2.0), light_bind_group)
-                }
-            };
             let transform = light.transform.affine()
                 * Affine3A::from_scale_rotation_translation(
                     quad_size.extend(1.0),
@@ -537,12 +420,16 @@ pub fn prepare_light2d_buffers(
                     (quad_size * -Vec2::splat(0.5)).extend(0.0),
                 );
 
-            light2d_bind_groups.insert(item.entity(), light_bind_group);
+            light2d_bind_groups.insert(
+                item.entity(),
+                light.instance.bind_group(&render_device, &render_queue),
+            );
 
-            // Store the vertex data and add the item to the render phase
-            light2d_meta
-                .instance_buffer
-                .push(Light2dInstance::from(&transform, &light.color));
+            light2d_meta.instance_buffer.push(Light2dInstance::from(
+                &transform,
+                &light.transform.translation().xy(),
+                &light.instance.color(),
+            ));
 
             current_batch.get_mut().end += 1;
             index += 1;
@@ -572,18 +459,20 @@ pub fn prepare_light2d_buffers(
     }
 }
 
-pub type DrawLight2dMesh = (
+pub type DrawLight2dMesh<L> = (
     SetItemPipeline,
-    SetLight2dViewBindGroup<0>,
-    SetLight2dMaterialBindGroup<1>,
-    DrawLight2dBatch,
+    SetLight2dViewBindGroup<L, 0>,
+    SetLight2dMaterialBindGroup<L, 1>,
+    DrawLight2dBatch<L>,
 );
 
-pub struct SetLight2dViewBindGroup<const I: usize>;
-impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetLight2dViewBindGroup<I> {
+pub struct SetLight2dViewBindGroup<L: Light2dType, const I: usize>(PhantomData<L>);
+impl<P: PhaseItem, L: Light2dType, const I: usize> RenderCommand<P>
+    for SetLight2dViewBindGroup<L, I>
+{
     type Param = ();
     type ViewQuery = (
-        Read<Light2dViewBindGroup>,
+        Read<Light2dViewBindGroup<L>>,
         Read<ViewUniformOffset>,
         Read<DynamicUniformIndex<ExtractedLighting2dSettings>>,
     );
@@ -609,9 +498,11 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetLight2dViewBindGroup<
     }
 }
 
-pub struct SetLight2dMaterialBindGroup<const I: usize>;
-impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetLight2dMaterialBindGroup<I> {
-    type Param = SRes<Light2dMaterialBindGroups>;
+pub struct SetLight2dMaterialBindGroup<L: Light2dType, const I: usize>(PhantomData<L>);
+impl<P: PhaseItem, L: Light2dType, const I: usize> RenderCommand<P>
+    for SetLight2dMaterialBindGroup<L, I>
+{
+    type Param = SRes<Light2dMaterialBindGroups<L>>;
     type ViewQuery = ();
     type ItemQuery = ();
 
@@ -632,9 +523,9 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetLight2dMaterialBindGr
     }
 }
 
-pub struct DrawLight2dBatch;
-impl<P: PhaseItem> RenderCommand<P> for DrawLight2dBatch {
-    type Param = (SRes<Light2dMeta>, SRes<Light2dBatches>);
+pub struct DrawLight2dBatch<L: Light2dType>(pub PhantomData<L>);
+impl<P: PhaseItem, L: Light2dType> RenderCommand<P> for DrawLight2dBatch<L> {
+    type Param = (SRes<Light2dMeta<L>>, SRes<Light2dBatches<L>>);
     type ViewQuery = Read<ExtractedView>;
     type ItemQuery = ();
 

@@ -49,26 +49,18 @@ fn setup(
             scale: 0.5,
             ..OrthographicProjection::default_2d()
         }),
-        Lighting2dSettings {
-            raymarch: RaymarchSettings {
-                max_steps: 16,
-                jitter_contrib: 0.0,
-                sharpness: 4.0,
-            },
-            ..default()
-        },
+        Lighting2dSettings::default(),
     ));
 
     // spawn point light
     commands.spawn((
         Torch,
-        Light2d::Point {
+        PointLight2d {
             color: Color::WHITE,
             intensity: 3.0,
-            outer_radius: 100.0,
-            inner_radius: 0.0,
-            falloff: 2.0,
-            shadows_enabled: true,
+            outer_radius: 200.0,
+            falloff: 1.0,
+            ..default()
         },
     ));
 
