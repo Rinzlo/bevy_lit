@@ -61,11 +61,9 @@ fn setup(
     ));
 
     commands.spawn((
-        SpotLight2d {
+        PointLight2d {
             intensity: 4.0,
             outer_radius: 512.0,
-            radial_falloff: 1.0,
-            color: Color::WHITE,
             ..default()
         },
         CursorLight,

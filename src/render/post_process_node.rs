@@ -13,6 +13,7 @@ use bevy::{
         view::{ExtractedView, ViewTarget, ViewUniformOffset, ViewUniforms},
     },
 };
+use bevy_voronoi::prelude::{VoronoiTexture, VoronoiTextures};
 
 use crate::{
     post_process::render::{
@@ -28,6 +29,7 @@ pub fn run_penetration_pass<'w>(
     render_context: &mut RenderContext<'w>,
     camera: &ExtractedCamera,
     lighting_texture: &mut LightingTexture,
+    voronoi_texture: &VoronoiTexture,
     view_uniform_offset: u32,
     settings_uniform_offset: u32,
 ) {
@@ -55,6 +57,7 @@ pub fn run_penetration_pass<'w>(
             view_uniforms,
             lighting_settings_uniforms,
             &lighting_texture.input().default_view,
+            &voronoi_texture.input().default_view,
             &sampler,
         )),
     );
@@ -225,6 +228,14 @@ impl ViewNode for Light2dPostProcessDrawNode {
                 view.retained_view_entity.main_entity.id()
             ))
             .clone();
+        let voronoi_texture = world
+            .resource::<VoronoiTextures>()
+            .get(&view.retained_view_entity)
+            .expect(&format!(
+                "Expected the voronoi texture for view {:?} to exist",
+                view.retained_view_entity.main_entity.id()
+            ))
+            .clone();
 
         if should_run_penetration_pass(&lighting_settings.penetration) {
             run_penetration_pass(
@@ -232,6 +243,7 @@ impl ViewNode for Light2dPostProcessDrawNode {
                 render_context,
                 camera,
                 &mut lighting_texture,
+                &voronoi_texture,
                 view_uniform_offset.offset,
                 settings_uniform_index.index(),
             );

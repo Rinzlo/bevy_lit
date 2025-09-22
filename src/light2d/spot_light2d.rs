@@ -85,8 +85,8 @@ impl Light2dType for SpotLight2d {
             inner_radius: self.inner_radius,
             outer_radius: self.outer_radius,
             radial_falloff: self.radial_falloff,
-            inner_angle: self.inner_angle,
-            outer_angle: self.outer_angle,
+            inner_angle: self.inner_angle.to_radians(),
+            outer_angle: self.outer_angle.to_radians(),
             angular_falloff: self.angular_falloff,
             shadows_enabled: if self.shadows_enabled { 1 } else { 0 },
         });

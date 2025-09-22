@@ -8,13 +8,14 @@
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
 @group(0) @binding(2) var lighting_texture: texture_2d<f32>;
-@group(0) @binding(3) var lighting_sampler: sampler;
+@group(0) @binding(3) var voronoi_texture: texture_2d<f32>;
+@group(0) @binding(4) var lighting_sampler: sampler;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let pos = frag_to_world(in.position / settings.scale, view).xy;
     let current = textureSample(lighting_texture, lighting_sampler, in.uv);
-    let sdf = current.a;
+    let sdf = get_sdf(pos);
     let p = settings.penetration;
 
     // Skip if outside occluder or penetration range
@@ -54,4 +55,12 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     }
 
     return vec4(penetration_color, sdf);
+}
+
+fn get_sdf(pos: vec2<f32>) -> f32 {
+    let uv = world_to_uv(vec3(pos, 0.0), view);
+    let seed = textureSampleLevel(voronoi_texture, lighting_sampler, uv, 0.0);
+    let dist = length(pos - frag_to_world(seed / settings.scale, view).xy);
+    // Determine if the pixel is inside or outside the shape
+    return select(dist, -dist, seed.w == 1.0);
 }

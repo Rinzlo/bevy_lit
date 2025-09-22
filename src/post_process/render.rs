@@ -84,6 +84,7 @@ pub fn init_post_process_pipelines(
                 uniform_buffer::<ViewUniform>(true),
                 uniform_buffer::<ExtractedLighting2dSettings>(true),
                 texture_2d(TextureSampleType::Float { filterable: true }),
+                texture_2d(TextureSampleType::Float { filterable: true }),
                 sampler(SamplerBindingType::Filtering),
             ),
         ),
