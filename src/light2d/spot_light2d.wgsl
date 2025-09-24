@@ -27,7 +27,7 @@ struct SpotLight2d {
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let pos = frag_to_world(in.clip_position / settings.scale, view).xy;
     let light_center = in.translation_rotation.xy;
-    let light_direction = in.translation_rotation.zw;
+    let light_direction = vec2<f32>(-in.translation_rotation.w, in.translation_rotation.z);
 
     let light_dist = distance(pos, light_center);
     let radial_attenuation = attenuation(

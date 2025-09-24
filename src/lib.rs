@@ -10,6 +10,7 @@ pub mod prelude {
         point_light2d::PointLight2d,
         render::{CustomLight2dPlugin, Light2dMaterial},
         spot_light2d::SpotLight2d,
+        texture_light2d::TextureLight2d,
     };
     pub use crate::plugin::Lighting2dPlugin;
     pub use crate::settings::{

@@ -79,19 +79,15 @@ fn setup(
             Vec2::new(50.0, -50.0),
         )),
     ];
-
+    let color = materials.add(Color::from(GRAY_700));
     let num_shapes = shapes.len();
 
     for (i, shape) in shapes.into_iter().enumerate() {
-        // Distribute colors evenly across the rainbow.
-        let color = Color::from(GRAY_700);
-
         commands.spawn((
             Mesh2d(shape),
-            MeshMaterial2d(materials.add(color)),
+            MeshMaterial2d(color.clone()),
             LightOccluder2d::default(),
             Transform::from_xyz(
-                // Distribute shapes from -X_EXTENT/2 to +X_EXTENT/2.
                 -X_EXTENT / 2. + i as f32 / (num_shapes - 1) as f32 * X_EXTENT,
                 0.0,
                 0.0,

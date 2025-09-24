@@ -52,3 +52,11 @@ path = "examples/occluder_mask.rs"
 [[example]]
 name = "penetration"
 path = "examples/penetration.rs"
+
+[[example]]
+name = "spot_light"
+path = "examples/spot_light.rs"
+
+[[example]]
+name = "texture_light"
+path = "examples/texture_light.rs"

@@ -322,6 +322,7 @@ pub fn prepare_light2d_view_bind_groups<L: Light2dMaterial>(
 struct Light2dInstance {
     // Affine 4x3 transposed to 3x4
     pub i_model_transpose: [Vec4; 3],
+    // Original translation and rotation
     pub i_original_translation_rotation: [Vec2; 2],
 }
 
@@ -344,7 +345,7 @@ impl Light2dInstance {
             ],
             i_original_translation_rotation: [
                 transform.translation().xy(),
-                (-transform.rotation() * Vec3::Y).yx(),
+                (transform.rotation() * Vec3::Y).xy(),
             ],
         }
     }
