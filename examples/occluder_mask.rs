@@ -1,31 +1,13 @@
-use bevy::color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, YELLOW_600};
-use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
-use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
+use bevy::{
+    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, YELLOW_600},
+    prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_lit::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    present_mode: bevy::window::PresentMode::Immediate,
-                    ..default()
-                }),
-                ..default()
-            }),
-            Lighting2dPlugin,
-            FpsOverlayPlugin {
-                config: FpsOverlayConfig {
-                    enabled: true,
-                    frame_time_graph_config: FrameTimeGraphConfig {
-                        enabled: false,
-                        ..default()
-                    },
-                    ..default()
-                },
-            },
-        ))
+        .add_plugins((DefaultPlugins, Lighting2dPlugin))
         .insert_resource(ClearColor(Color::from(GRAY_200)))
         .add_systems(Startup, setup)
         .add_systems(Update, update_cursor_light)
@@ -45,6 +27,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
     commands.spawn((
         Camera2d,
         Lighting2dSettings {
+            blur: 4,
             edge_intensity: 4.0,
             raymarch: RaymarchSettings {
                 max_steps: 32,
@@ -69,6 +52,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
         },
         LightOccluder2d::new(lettering_handle),
     ));
+
     let point_light = PointLight2d {
         intensity: 2.0,
         outer_radius: 1100.0,
@@ -95,11 +79,11 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
 
     commands.spawn((
         CursorLight,
-        SpotLight2d {
+        PointLight2d {
+            color: Color::from(YELLOW_600),
             intensity: 2.0,
             outer_radius: 400.0,
-            radial_falloff: 10.0,
-            color: Color::from(YELLOW_600),
+            falloff: 10.0,
             ..default()
         },
     ));

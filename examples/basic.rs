@@ -1,6 +1,5 @@
 use bevy::{
     color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_700, YELLOW_600},
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig},
     prelude::*,
     window::PrimaryWindow,
 };
@@ -8,26 +7,7 @@ use bevy_lit::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    present_mode: bevy::window::PresentMode::Immediate,
-                    ..default()
-                }),
-                ..default()
-            }),
-            Lighting2dPlugin,
-            FpsOverlayPlugin {
-                config: FpsOverlayConfig {
-                    enabled: true,
-                    frame_time_graph_config: FrameTimeGraphConfig {
-                        enabled: false,
-                        ..default()
-                    },
-                    ..default()
-                },
-            },
-        ))
+        .add_plugins((DefaultPlugins, Lighting2dPlugin))
         .insert_resource(ClearColor(Color::from(GRAY_200)))
         .add_systems(Startup, setup)
         .add_systems(Update, update_cursor_light)
@@ -128,7 +108,6 @@ fn setup(
             falloff: 10.0,
             ..default()
         },
-        Transform::default().with_scale(Vec3::new(2.0, 1.0, 1.0)),
     ));
 }
 
