@@ -59,12 +59,50 @@ pub enum Light2dSize {
     Handle(Handle<Image>),
 }
 
+/// Describes the blend mode used when drawing 2d light
+#[derive(Deref, DerefMut)]
+pub struct Light2dBlendMode(pub BlendState);
+
+impl Light2dBlendMode {
+    /// When combining two light fragments, add their values together, saturating at 1.0
+    pub const ADD: Self = Self(BlendState {
+        color: BlendComponent {
+            src_factor: BlendFactor::SrcAlpha,
+            dst_factor: BlendFactor::One,
+            operation: BlendOperation::Add,
+        },
+        alpha: BlendComponent {
+            src_factor: BlendFactor::OneMinusDstAlpha,
+            dst_factor: BlendFactor::One,
+            operation: BlendOperation::Add,
+        },
+    });
+
+    /// When combining two light fragments, multiply their values together (including alpha)
+    pub const MULTIPLY: Self = Self(BlendState {
+        color: BlendComponent {
+            src_factor: BlendFactor::Dst,
+            dst_factor: BlendFactor::Zero,
+            operation: BlendOperation::Add,
+        },
+        alpha: BlendComponent {
+            src_factor: BlendFactor::DstAlpha,
+            dst_factor: BlendFactor::Zero,
+            operation: BlendOperation::Add,
+        },
+    });
+}
+
 /// Paired with [`CustomLight2dPlugin`], provides a high level way to create 2d light components entities with custom shader logic
 ///
 /// A [`Light2dMaterial`] must implement [`AsBindGroup`] to define how data will be transferred to the GPU and bound in shaders. See the docs for details.
 pub trait Light2dMaterial: AsBindGroup + Component + Default + Clone {
     /// Returns the light fragment shader
     fn fragment_shader() -> ShaderRef;
+    /// Returns the light material blend mode
+    fn blend_mode() -> Light2dBlendMode {
+        Light2dBlendMode::ADD
+    }
     /// Returns the light mesh size (eg. the radius of the light or the size of the lighting texture)
     fn light_size(&self) -> Light2dSize;
 }
@@ -215,18 +253,7 @@ impl<L: Light2dMaterial> SpecializedRenderPipeline for Light2dPipeline<L> {
                     entry_point: Some("fragment".into()),
                     targets: vec![Some(ColorTargetState {
                         format: TextureFormat::Rgba16Float,
-                        blend: Some(BlendState {
-                            color: BlendComponent {
-                                src_factor: BlendFactor::SrcAlpha,
-                                dst_factor: BlendFactor::One,
-                                operation: BlendOperation::Add,
-                            },
-                            alpha: BlendComponent {
-                                src_factor: BlendFactor::One,
-                                dst_factor: BlendFactor::One,
-                                operation: BlendOperation::Add,
-                            },
-                        }),
+                        blend: Some(L::blend_mode().0),
                         write_mask: ColorWrites::ALL,
                     })],
                 }),
@@ -435,7 +462,7 @@ pub fn prepare_light2d_buffers<L: Light2dMaterial>(
     mut phases: ResMut<ViewSortedRenderPhases<Light2dPhase>>,
     mut batches: ResMut<Light2dBatches<L>>,
     mut light2d_bind_groups: ResMut<PreparedLight2dMaterialBindGroups<L>>,
-    system_param: StaticSystemParam<<L>::Param>,
+    system_param: StaticSystemParam<L::Param>,
 ) {
     let mut system_param = system_param.into_inner();
 

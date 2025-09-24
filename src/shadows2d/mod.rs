@@ -27,6 +27,7 @@ pub struct LightOccluder2d {
 }
 
 impl LightOccluder2d {
+    /// Creates a new [`LightOccluder2d`] with an occlusion mask
     pub fn new(occluder_mask: Handle<Image>) -> Self {
         Self { occluder_mask }
     }

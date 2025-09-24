@@ -1,3 +1,6 @@
+#![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
+
 mod light2d;
 mod plugin;
 mod post_process;
@@ -5,10 +8,11 @@ mod render;
 mod settings;
 mod shadows2d;
 
+/// exports mostly used dependencies
 pub mod prelude {
     pub use crate::light2d::{
         point_light2d::PointLight2d,
-        render::{CustomLight2dPlugin, Light2dMaterial, Light2dSize},
+        render::{CustomLight2dPlugin, Light2dBlendMode, Light2dMaterial, Light2dSize},
         spot_light2d::SpotLight2d,
         texture_light2d::TextureLight2d,
     };
