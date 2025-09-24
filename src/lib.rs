@@ -8,7 +8,7 @@ mod render;
 mod settings;
 mod shadows2d;
 
-/// exports mostly used dependencies
+/// Exports basic components for 2d lighting effects
 pub mod prelude {
     pub use crate::light2d::{
         point_light2d::PointLight2d,
