@@ -26,7 +26,10 @@ fn setup(
 ) {
     commands.spawn((
         Camera2d,
-        Lighting2dSettings::default(),
+        Lighting2dSettings {
+            scale: 1.0,
+            ..default()
+        },
         AmbientLight2d {
             intensity: 0.2,
             ..default()
