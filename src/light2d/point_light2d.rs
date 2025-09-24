@@ -11,7 +11,7 @@ use bevy::{
     shader::ShaderRef,
 };
 
-use crate::light2d::render::{CustomLight2dPlugin, Light2dMaterial};
+use crate::light2d::render::{CustomLight2dPlugin, Light2dMaterial, Light2dSize};
 
 pub struct PointLight2dPlugin;
 impl Plugin for PointLight2dPlugin {
@@ -83,7 +83,7 @@ impl Light2dMaterial for PointLight2d {
     }
 
     #[inline]
-    fn light_size(&self, _images: &RenderAssets<GpuImage>) -> Vec2 {
-        Vec2::splat(self.outer_radius * 2.0)
+    fn light_size(&self) -> Light2dSize {
+        Light2dSize::Explicit(Vec2::splat(self.outer_radius * 2.0))
     }
 }

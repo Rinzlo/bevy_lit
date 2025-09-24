@@ -2,6 +2,10 @@ use std::{hash::Hash, marker::PhantomData, ops::Range};
 
 use bevy::{
     asset::{embedded_asset, load_embedded_asset},
+    camera::{
+        primitives::Aabb,
+        visibility::{NoFrustumCulling, VisibilitySystems},
+    },
     ecs::{
         entity::EntityHashMap,
         query::ROQueryItem,
@@ -47,6 +51,14 @@ use fixedbitset::FixedBitSet;
 
 use crate::{post_process::render::ExtractedLighting2dSettings, render::Light2dPhase};
 
+/// How a 2D light's size is defined: either directly or from an image
+pub enum Light2dSize {
+    /// Explicit size in world units
+    Explicit(Vec2),
+    /// Size from the referenced image
+    Handle(Handle<Image>),
+}
+
 /// Paired with [`CustomLight2dPlugin`], provides a high level way to create 2d light components entities with custom shader logic
 ///
 /// A [`Light2dMaterial`] must implement [`AsBindGroup`] to define how data will be transferred to the GPU and bound in shaders. See the docs for details.
@@ -54,7 +66,7 @@ pub trait Light2dMaterial: AsBindGroup + Component + Default + Clone {
     /// Returns the light fragment shader
     fn fragment_shader() -> ShaderRef;
     /// Returns the light mesh size (eg. the radius of the light or the size of the lighting texture)
-    fn light_size(&self, images: &RenderAssets<GpuImage>) -> Vec2;
+    fn light_size(&self) -> Light2dSize;
 }
 
 /// Adds the necessary ECS resources and render logic to enable rendering entities using
@@ -66,6 +78,11 @@ impl<L: Light2dMaterial> Plugin for CustomLight2dPlugin<L> {
     fn build(&self, app: &mut App) {
         load_shader_library!(app, "light2d_common.wgsl");
         embedded_asset!(app, "light2d_vertex.wgsl");
+
+        app.add_systems(
+            PostUpdate,
+            calculate_bounds_2d::<L>.in_set(VisibilitySystems::CalculateBounds),
+        );
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -91,6 +108,33 @@ impl<L: Light2dMaterial> Plugin for CustomLight2dPlugin<L> {
                 ),
             )
             .add_render_command::<Light2dPhase, DrawLight2dMesh<L>>();
+    }
+}
+
+pub fn calculate_bounds_2d<L: Light2dMaterial>(
+    mut commands: Commands,
+    images: Res<Assets<Image>>,
+    lights_to_recalculate_aabb: Query<
+        (Entity, &L),
+        (Or<(Without<Aabb>, Changed<L>)>, Without<NoFrustumCulling>),
+    >,
+) {
+    for (entity, light) in &lights_to_recalculate_aabb {
+        let size = match light.light_size() {
+            Light2dSize::Explicit(vec2) => vec2,
+            Light2dSize::Handle(handle) => {
+                let Some(image) = images.get(&handle) else {
+                    continue;
+                };
+
+                image.size_f32()
+            }
+        };
+
+        commands.entity(entity).try_insert(Aabb {
+            center: Vec3::ZERO.into(),
+            half_extents: (0.5 * size).extend(0.0).into(),
+        });
     }
 }
 
@@ -432,16 +476,26 @@ pub fn prepare_light2d_buffers<L: Light2dMaterial>(
                 continue;
             };
 
+            let light_size = match &light.instance.light_size() {
+                Light2dSize::Explicit(vec2) => *vec2,
+                Light2dSize::Handle(handle) => {
+                    let Some(image) = render_images.get(handle) else {
+                        continue;
+                    };
+
+                    image.size_2d().as_vec2()
+                }
+            };
+
             let mut current_batch = batches
                 .entry((*retained_view, item.entity()))
                 .insert(index..index);
 
             light2d_bind_groups.insert(item.entity(), prepared_bind_group);
 
-            light2d_meta.instance_buffer.push(Light2dInstance::from(
-                &light.transform,
-                &light.instance.light_size(&render_images),
-            ));
+            light2d_meta
+                .instance_buffer
+                .push(Light2dInstance::from(&light.transform, &light_size));
 
             current_batch.get_mut().end += 1;
             index += 1;

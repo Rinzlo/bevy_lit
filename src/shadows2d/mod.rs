@@ -7,7 +7,7 @@ pub struct Shadows2dPlugin;
 impl Plugin for Shadows2dPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(Voronoi2dPlugin).add_systems(
-            Update,
+            PostUpdate,
             (
                 update_voronoi_view,
                 update_voronoi_material,
