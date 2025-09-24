@@ -15,7 +15,7 @@ struct PointLight2d {
     inner_radius: f32,
     outer_radius: f32,
     falloff: f32,
-    shadows_enabled: u32,
+    cast_shadows: u32,
 }
 
 @group(1) @binding(0) var<uniform> light: PointLight2d;
@@ -46,7 +46,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     if sdf <= 0.0 {
         light_contrib *= select(0.0, 1.0, bool(settings.tint_occluders));
     } else {
-        if bool(light.shadows_enabled) {
+        if bool(light.cast_shadows) {
             light_contrib *= raymarch(pos, light_center);
         }
     }

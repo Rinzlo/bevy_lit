@@ -44,7 +44,7 @@ pub struct SpotLight2d {
     /// The angular falloff rate of the spot light
     pub angular_falloff: f32,
     /// Whether the spot light should project shadows
-    pub shadows_enabled: bool,
+    pub cast_shadows: bool,
 }
 
 impl Default for SpotLight2d {
@@ -58,7 +58,7 @@ impl Default for SpotLight2d {
             inner_angle: 0.0,
             outer_angle: 45.0,
             angular_falloff: 1.0,
-            shadows_enabled: true,
+            cast_shadows: true,
         }
     }
 }
@@ -72,7 +72,7 @@ pub struct SpotLight2dGpuType {
     inner_angle: f32,
     outer_angle: f32,
     angular_falloff: f32,
-    shadows_enabled: u32,
+    cast_shadows: u32,
 }
 
 impl AsBindGroupShaderType<SpotLight2dGpuType> for SpotLight2d {
@@ -85,7 +85,7 @@ impl AsBindGroupShaderType<SpotLight2dGpuType> for SpotLight2d {
             inner_angle: self.inner_angle.to_radians(),
             outer_angle: self.outer_angle.to_radians(),
             angular_falloff: self.angular_falloff,
-            shadows_enabled: if self.shadows_enabled { 1 } else { 0 },
+            cast_shadows: if self.cast_shadows { 1 } else { 0 },
         }
     }
 }

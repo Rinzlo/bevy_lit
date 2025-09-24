@@ -17,7 +17,7 @@
 
 - [x] To match other light sources `AmbientLight2d.brightness` is now `AmbientLight2d.intensity`
 - [x] `PointLight2d.radius` is now `PointLight2d.outer_radius`
-- [ ] `PointLight.shadows_enabled` is now `PointLight2d.cast_shadows`
+- [x] `PointLight.cast_shadows` is now `PointLight2d.cast_shadows`
 - [ ] `LightOccluder2D` has been replaced by `LitMaterial`. Now to cast a shadow from a mesh use `LitMaterial.cast_shadows`
 
 ## 0.7.0
@@ -100,7 +100,7 @@ commands.spawn((
 ### Features
 
 - Introduced **frustum culling** for lighting artifacts 🚀
-- Added `shadows_enabled` to `PointLight2d` for shadow projection control
+- Added `cast_shadows` to `PointLight2d` for shadow projection control
 - Added new `stress_test` example
 
 ### Breaking Changes
@@ -118,7 +118,7 @@ commands.spawn((
           falloff: 3.0,
           color: Color::srgb(1.0, 1.0, 0.0),
 +         // defaults to true
-+         shadows_enabled: false,
++         cast_shadows: false,
       },
   ));
 ```

@@ -39,13 +39,13 @@ fn setup(
             raymarch: RaymarchSettings {
                 max_steps: 32,
                 jitter_contrib: 0.0,
-                sharpness: 320.,
+                sharpness: 16.,
             },
             scale: 0.125,
             ..default()
         },
         AmbientLight2d {
-            intensity: 0.05,
+            intensity: 0.1,
             color: Color::from(BLUE_300),
         },
     ));
@@ -57,6 +57,7 @@ fn setup(
             intensity: 0.2,
             ..default()
         },
+        Sprite::sized(Vec2::splat(8.0)),
     ));
 
     let tile = meshes.add(Rectangle::from_length(16.));

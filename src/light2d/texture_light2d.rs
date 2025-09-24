@@ -36,7 +36,7 @@ pub struct TextureLight2d {
     #[sampler(2)]
     pub image: Handle<Image>,
     /// Whether the texture light should project shadows
-    pub shadows_enabled: bool,
+    pub cast_shadows: bool,
 }
 
 impl Default for TextureLight2d {
@@ -45,7 +45,7 @@ impl Default for TextureLight2d {
             color: Color::WHITE,
             intensity: 1.0,
             image: Default::default(),
-            shadows_enabled: true,
+            cast_shadows: true,
         }
     }
 }
@@ -53,14 +53,14 @@ impl Default for TextureLight2d {
 #[derive(ShaderType)]
 pub struct Texture2dGpuType {
     color: LinearRgba,
-    shadows_enabled: u32,
+    cast_shadows: u32,
 }
 
 impl AsBindGroupShaderType<Texture2dGpuType> for TextureLight2d {
     fn as_bind_group_shader_type(&self, _images: &RenderAssets<GpuImage>) -> Texture2dGpuType {
         Texture2dGpuType {
             color: self.color.to_linear() * self.intensity,
-            shadows_enabled: if self.shadows_enabled { 1 } else { 0 },
+            cast_shadows: if self.cast_shadows { 1 } else { 0 },
         }
     }
 }

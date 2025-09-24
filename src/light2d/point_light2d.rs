@@ -38,7 +38,7 @@ pub struct PointLight2d {
     /// The radial falloff rate of the point light
     pub falloff: f32,
     /// Whether the point light should project shadows
-    pub shadows_enabled: bool,
+    pub cast_shadows: bool,
 }
 
 impl Default for PointLight2d {
@@ -49,7 +49,7 @@ impl Default for PointLight2d {
             inner_radius: 0.0,
             outer_radius: 64.0,
             falloff: 1.0,
-            shadows_enabled: true,
+            cast_shadows: true,
         }
     }
 }
@@ -60,7 +60,7 @@ pub struct PointLight2dGpuType {
     inner_radius: f32,
     outer_radius: f32,
     falloff: f32,
-    shadows_enabled: u32,
+    cast_shadows: u32,
 }
 
 impl AsBindGroupShaderType<PointLight2dGpuType> for PointLight2d {
@@ -70,7 +70,7 @@ impl AsBindGroupShaderType<PointLight2dGpuType> for PointLight2d {
             inner_radius: self.inner_radius,
             outer_radius: self.outer_radius,
             falloff: self.falloff,
-            shadows_enabled: if self.shadows_enabled { 1 } else { 0 },
+            cast_shadows: if self.cast_shadows { 1 } else { 0 },
         }
     }
 }
