@@ -10,8 +10,6 @@
   - [x] `TextureLight2d`
 - [x] Introduces `Light2dMaterial` and `CustomLight2dPlugin` that provide high level abstraction to create custom 2d lights
 - [ ] New `LitMaterial` Component with support for normal maps, masking and occlusion
-- [ ] WebGL2 support is back
-- [ ] Occlusion layers
 
 ### Breaking
 

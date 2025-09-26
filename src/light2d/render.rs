@@ -63,6 +63,12 @@ pub enum Light2dSize {
 #[derive(Deref, DerefMut)]
 pub struct Light2dBlendMode(pub BlendState);
 
+impl Default for Light2dBlendMode {
+    fn default() -> Self {
+        Self::ADD
+    }
+}
+
 impl Light2dBlendMode {
     /// When combining two light fragments, add their values together, saturating at 1.0
     pub const ADD: Self = Self(BlendState {
@@ -101,7 +107,7 @@ pub trait Light2dMaterial: AsBindGroup + Component + Default + Clone {
     fn fragment_shader() -> ShaderRef;
     /// Returns the light material blend mode
     fn blend_mode() -> Light2dBlendMode {
-        Light2dBlendMode::ADD
+        Light2dBlendMode::default()
     }
     /// Returns the light mesh size (eg. the radius of the light or the size of the lighting texture)
     fn light_size(&self) -> Light2dSize;

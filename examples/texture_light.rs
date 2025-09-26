@@ -1,9 +1,4 @@
-use bevy::{
-    camera::ScalingMode,
-    color::palettes::tailwind::{BLUE_300, GRAY_500, GRAY_600},
-    prelude::*,
-    window::PrimaryWindow,
-};
+use bevy::{camera::ScalingMode, color::palettes::tailwind::*, prelude::*, window::PrimaryWindow};
 use bevy_lit::prelude::*;
 
 fn main() {
@@ -39,13 +34,13 @@ fn setup(
             raymarch: RaymarchSettings {
                 max_steps: 32,
                 jitter_contrib: 0.0,
-                sharpness: 16.,
+                sharpness: 64.,
             },
             scale: 0.125,
             ..default()
         },
         AmbientLight2d {
-            intensity: 0.1,
+            intensity: 0.2,
             color: Color::from(BLUE_300),
         },
     ));
@@ -54,14 +49,15 @@ fn setup(
         CursorLight,
         TextureLight2d {
             image: asset_server.load("light_mask.png"),
-            intensity: 0.2,
+            color: Color::from(YELLOW_400),
+            intensity: 0.5,
             ..default()
         },
         Sprite::sized(Vec2::splat(8.0)),
     ));
 
     let tile = meshes.add(Rectangle::from_length(16.));
-    let material = materials.add(Color::from(GRAY_500));
+    let material = materials.add(Color::from(GRAY_800));
 
     commands.spawn((
         Mesh2d(tile.clone()),
