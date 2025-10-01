@@ -85,7 +85,7 @@ impl AsBindGroupShaderType<SpotLight2dGpuType> for SpotLight2d {
             inner_angle: self.inner_angle.to_radians(),
             outer_angle: self.outer_angle.to_radians(),
             angular_falloff: self.angular_falloff,
-            cast_shadows: if self.cast_shadows { 1 } else { 0 },
+            cast_shadows: self.cast_shadows as u32,
         }
     }
 }
@@ -100,5 +100,10 @@ impl Light2dMaterial for SpotLight2d {
     #[inline]
     fn light_size(&self) -> Light2dSize {
         Light2dSize::Explicit(Vec2::splat(self.outer_radius * 2.0))
+    }
+
+    #[inline]
+    fn cast_shadows(&self) -> bool {
+        self.cast_shadows
     }
 }

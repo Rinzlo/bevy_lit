@@ -42,7 +42,7 @@ fn setup(
 
     commands.spawn((
         PointLight2d {
-            intensity: 4.0,
+            // intensity: 4.0,
             outer_radius: 512.0,
             ..default()
         },

@@ -21,7 +21,7 @@ struct SpotLight2d {
     cast_shadows: u32,
 }
 
-@group(1) @binding(0) var<uniform> light: SpotLight2d;
+@group(2) @binding(0) var<uniform> light: SpotLight2d;
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {

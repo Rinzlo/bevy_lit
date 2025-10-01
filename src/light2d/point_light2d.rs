@@ -70,7 +70,7 @@ impl AsBindGroupShaderType<PointLight2dGpuType> for PointLight2d {
             inner_radius: self.inner_radius,
             outer_radius: self.outer_radius,
             falloff: self.falloff,
-            cast_shadows: if self.cast_shadows { 1 } else { 0 },
+            cast_shadows: self.cast_shadows as u32,
         }
     }
 }
@@ -85,5 +85,10 @@ impl Light2dMaterial for PointLight2d {
     #[inline]
     fn light_size(&self) -> Light2dSize {
         Light2dSize::Explicit(Vec2::splat(self.outer_radius * 2.0))
+    }
+
+    #[inline]
+    fn cast_shadows(&self) -> bool {
+        self.cast_shadows
     }
 }

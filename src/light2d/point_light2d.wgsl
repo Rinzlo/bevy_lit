@@ -1,5 +1,5 @@
 #import bevy_lit::{
-    view_transformations::frag_to_world,
+    view_transformations::{frag_to_world, world_to_uv},
     light2d_common::{
         VertexOutput,
         settings,
@@ -10,6 +10,9 @@
     },
 }
 
+@group(1) @binding(0) var shadow_texture: texture_2d<f32>;
+@group(1) @binding(1) var shadow_sampler: sampler;
+
 struct PointLight2d {
     color: vec4<f32>,
     inner_radius: f32,
@@ -18,7 +21,7 @@ struct PointLight2d {
     cast_shadows: u32,
 }
 
-@group(1) @binding(0) var<uniform> light: PointLight2d;
+@group(2) @binding(0) var<uniform> light: PointLight2d;
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
@@ -44,7 +47,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
     // inside occluder
     if sdf <= 0.0 {
-        light_contrib *= select(0.0, 1.0, bool(settings.tint_occluders));
+        light_contrib *= vec3(1.0, 0.0, 0.0);
     } else {
         if bool(light.cast_shadows) {
             light_contrib *= raymarch(pos, light_center);

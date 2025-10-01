@@ -60,7 +60,7 @@ impl AsBindGroupShaderType<Texture2dGpuType> for TextureLight2d {
     fn as_bind_group_shader_type(&self, _images: &RenderAssets<GpuImage>) -> Texture2dGpuType {
         Texture2dGpuType {
             color: self.color.to_linear() * self.intensity,
-            cast_shadows: if self.cast_shadows { 1 } else { 0 },
+            cast_shadows: self.cast_shadows as u32,
         }
     }
 }
@@ -76,5 +76,10 @@ impl Light2dMaterial for TextureLight2d {
     #[inline]
     fn light_size(&self) -> Light2dSize {
         Light2dSize::Handle(self.image.clone())
+    }
+
+    #[inline]
+    fn cast_shadows(&self) -> bool {
+        self.cast_shadows
     }
 }

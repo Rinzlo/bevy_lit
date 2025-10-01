@@ -236,7 +236,15 @@ impl ViewNode for Light2dPostProcessDrawNode {
                 view.retained_view_entity.main_entity.id()
             ))
             .clone();
-
+        // let shadow_texture = world
+        //     .resource::<ShadowTextures>()
+        //     .get(&view.retained_view_entity)
+        //     .expect(&format!(
+        //         "Expected the shadow texture for view {:?} to exist",
+        //         view.retained_view_entity.main_entity.id()
+        //     ))
+        //     .clone();
+        //
         if should_run_penetration_pass(&lighting_settings.penetration) {
             run_penetration_pass(
                 world,
@@ -280,7 +288,8 @@ impl ViewNode for Light2dPostProcessDrawNode {
 }
 
 fn should_run_penetration_pass(penetration: &PenetrationSettings) -> bool {
-    penetration.max > 0.0
+    false
+        && penetration.max > 0.0
         && penetration.intensity > 0.0
         && penetration.sample_directions > 0
         && penetration.sample_steps > 0
