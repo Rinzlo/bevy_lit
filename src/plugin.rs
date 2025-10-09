@@ -1,13 +1,13 @@
 use bevy::{prelude::*, shader::load_shader_library};
 
 use crate::{
-    light2d::{
-        point_light2d::PointLight2dPlugin, spot_light2d::SpotLight2dPlugin,
-        texture_light2d::TextureLight2dPlugin,
+    light::{
+        point_light::PointLight2dPlugin, spot_light::SpotLight2dPlugin,
+        texture_light::TextureLight2dPlugin,
     },
+    occlusion::Shadows2dPlugin,
     post_process::Lighting2dSettingsPlugin,
     render::Light2dRenderPlugin,
-    shadows2d::Shadows2dPlugin,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.

@@ -119,8 +119,8 @@ pub struct CustomLight2dPlugin<L: Light2dMaterial>(PhantomData<L>);
 
 impl<L: Light2dMaterial> Plugin for CustomLight2dPlugin<L> {
     fn build(&self, app: &mut App) {
-        load_shader_library!(app, "light2d_common.wgsl");
-        embedded_asset!(app, "light2d_vertex.wgsl");
+        load_shader_library!(app, "light_common.wgsl");
+        embedded_asset!(app, "light_vertex.wgsl");
 
         app.add_systems(
             PostUpdate,
@@ -195,7 +195,7 @@ pub fn init_light2d_pipeline<L: Light2dMaterial>(
     asset_server: Res<AssetServer>,
 ) {
     commands.insert_resource(Light2dPipeline::<L> {
-        vertex_shader: load_embedded_asset!(asset_server.as_ref(), "light2d_vertex.wgsl"),
+        vertex_shader: load_embedded_asset!(asset_server.as_ref(), "light_vertex.wgsl"),
         fragment_shader: match L::fragment_shader() {
             Light2dShaderRef::Handle(handle) => handle,
             Light2dShaderRef::Path(path) => asset_server.load(path),

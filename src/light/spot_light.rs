@@ -10,12 +10,12 @@ use bevy::{
     },
 };
 
-use crate::light2d::render::{CustomLight2dPlugin, Light2dMaterial, Light2dShaderRef, Light2dSize};
+use crate::light::render::{CustomLight2dPlugin, Light2dMaterial, Light2dShaderRef, Light2dSize};
 
 pub struct SpotLight2dPlugin;
 impl Plugin for SpotLight2dPlugin {
     fn build(&self, app: &mut App) {
-        embedded_asset!(app, "spot_light2d.wgsl");
+        embedded_asset!(app, "spot_light.wgsl");
         app.add_plugins(CustomLight2dPlugin::<SpotLight2d>::default());
     }
 }
@@ -91,7 +91,7 @@ impl AsBindGroupShaderType<SpotLight2dGpuType> for SpotLight2d {
 
 impl Light2dMaterial for SpotLight2d {
     fn fragment_shader() -> Light2dShaderRef {
-        AssetPath::from_path_buf(embedded_path!("spot_light2d.wgsl"))
+        AssetPath::from_path_buf(embedded_path!("spot_light.wgsl"))
             .with_source("embedded")
             .into()
     }

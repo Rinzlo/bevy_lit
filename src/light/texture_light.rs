@@ -10,12 +10,12 @@ use bevy::{
     },
 };
 
-use crate::light2d::render::{CustomLight2dPlugin, Light2dMaterial, Light2dShaderRef, Light2dSize};
+use crate::light::render::{CustomLight2dPlugin, Light2dMaterial, Light2dShaderRef, Light2dSize};
 
 pub struct TextureLight2dPlugin;
 impl Plugin for TextureLight2dPlugin {
     fn build(&self, app: &mut App) {
-        embedded_asset!(app, "texture_light2d.wgsl");
+        embedded_asset!(app, "texture_light.wgsl");
         app.add_plugins(CustomLight2dPlugin::<TextureLight2d>::default());
     }
 }
@@ -66,7 +66,7 @@ impl AsBindGroupShaderType<Texture2dGpuType> for TextureLight2d {
 
 impl Light2dMaterial for TextureLight2d {
     fn fragment_shader() -> Light2dShaderRef {
-        AssetPath::from_path_buf(embedded_path!("texture_light2d.wgsl"))
+        AssetPath::from_path_buf(embedded_path!("texture_light.wgsl"))
             .with_source("embedded")
             .into()
     }
