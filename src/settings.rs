@@ -1,8 +1,10 @@
 use bevy::{
     prelude::*,
-    render::{render_resource::ShaderType, sync_world::SyncToRenderWorld},
+    render::{
+        extract_component::ExtractComponent, render_resource::ShaderType,
+        sync_world::SyncToRenderWorld,
+    },
 };
-use bevy_voronoi::prelude::VoronoiView;
 
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
@@ -74,8 +76,8 @@ impl Default for PenetrationSettings {
 
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
-#[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, AmbientLight2d, VoronoiView)]
+#[derive(Component, Clone, Reflect, ExtractComponent)]
+#[require(SyncToRenderWorld, AmbientLight2d)]
 pub struct Lighting2dSettings {
     /// Raymarch settings
     pub raymarch: RaymarchSettings,

@@ -44,11 +44,13 @@ use bevy::{
     },
     shader::load_shader_library,
 };
-use bevy_voronoi::prelude::VoronoiTextures;
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
 
-use crate::{post_process::render::ExtractedLighting2dSettings, render::Light2dPhase};
+use crate::{
+    post_process::render::ExtractedLighting2dSettings,
+    render::{Light2dPhase, VoronoiTextures},
+};
 
 /// A reference for the 2d light shader asset
 pub enum Light2dShaderRef {

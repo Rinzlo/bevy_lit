@@ -13,14 +13,13 @@ use bevy::{
         view::{ExtractedView, ViewTarget, ViewUniformOffset, ViewUniforms},
     },
 };
-use bevy_voronoi::prelude::{VoronoiTexture, VoronoiTextures};
 
 use crate::{
     post_process::render::{
         ExtractedLighting2dSettings, Lighting2dCompositePipeline, Lighting2dCompositePipelineId,
         Lighting2dPostProcessPipelines,
     },
-    render::{LightingTexture, LightingTextures},
+    render::{FlipTexture, LightingTextures, VoronoiTextures},
     settings::PenetrationSettings,
 };
 
@@ -28,8 +27,8 @@ pub fn run_penetration_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
     camera: &ExtractedCamera,
-    lighting_texture: &mut LightingTexture,
-    voronoi_texture: &VoronoiTexture,
+    lighting_texture: &mut FlipTexture,
+    voronoi_texture: &FlipTexture,
     view_uniform_offset: u32,
     settings_uniform_offset: u32,
 ) {
@@ -91,7 +90,7 @@ pub fn run_penetration_pass<'w>(
 pub fn run_blur_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
-    lighting_texture: &mut LightingTexture,
+    lighting_texture: &mut FlipTexture,
     settings_uniform_offset: u32,
     direction: IVec2,
 ) {
@@ -144,7 +143,7 @@ pub fn run_blur_pass<'w>(
 pub fn run_composite_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
-    lighting_texture: &mut LightingTexture,
+    lighting_texture: &mut FlipTexture,
     view_target: &ViewTarget,
     pipeline_id: CachedRenderPipelineId,
     settings_uniform_offset: u32,

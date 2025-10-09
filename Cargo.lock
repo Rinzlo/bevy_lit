@@ -919,7 +919,6 @@ name = "bevy_lit"
 version = "0.7.0"
 dependencies = [
  "bevy",
- "bevy_voronoi",
  "bytemuck",
  "fixedbitset",
  "rand",
@@ -1500,15 +1499,6 @@ dependencies = [
  "bevy_platform",
  "disqualified",
  "thread_local",
-]
-
-[[package]]
-name = "bevy_voronoi"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a8fd48a1df9fc974d3ab035fd901a3bbee7c7a0e49444b37c59a58ff2808bf0"
-dependencies = [
- "bevy",
 ]
 
 [[package]]

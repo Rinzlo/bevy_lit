@@ -5,7 +5,7 @@ use crate::{
         point_light::PointLight2dPlugin, spot_light::SpotLight2dPlugin,
         texture_light::TextureLight2dPlugin,
     },
-    occlusion::Shadows2dPlugin,
+    occlusion::render::Voronoi2dPlugin,
     post_process::Lighting2dSettingsPlugin,
     render::Light2dRenderPlugin,
 };
@@ -23,7 +23,7 @@ impl Plugin for Lighting2dPlugin {
         app.add_plugins((
             Light2dRenderPlugin,
             Lighting2dSettingsPlugin,
-            Shadows2dPlugin,
+            Voronoi2dPlugin,
             PointLight2dPlugin,
             SpotLight2dPlugin,
             TextureLight2dPlugin,
