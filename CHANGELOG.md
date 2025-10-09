@@ -117,7 +117,7 @@ commands.spawn((
 ### Features
 
 - Introduced **frustum culling** for lighting artifacts 🚀
-- Added `cast_shadows` to `PointLight2d` for shadow projection control
+- Added `shadows_enabled` to `PointLight2d` for shadow projection control
 - Added new `stress_test` example
 
 ### Breaking Changes
