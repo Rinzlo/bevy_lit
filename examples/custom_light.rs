@@ -85,7 +85,7 @@ fn setup(
     commands.spawn(ToonLight2d {
         gradient_map: images.add(gradient_map),
         radius: 300.0,
-        color: Color::from(YELLOW_300).to_linear(),
+        color: Color::from(YELLOW_100).to_linear(),
     });
 
     commands.spawn((
