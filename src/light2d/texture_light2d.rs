@@ -8,10 +8,9 @@ use bevy::{
         sync_world::SyncToRenderWorld,
         texture::GpuImage,
     },
-    shader::ShaderRef,
 };
 
-use crate::light2d::render::{CustomLight2dPlugin, Light2dMaterial, Light2dSize};
+use crate::light2d::render::{CustomLight2dPlugin, Light2dMaterial, Light2dShaderRef, Light2dSize};
 
 pub struct TextureLight2dPlugin;
 impl Plugin for TextureLight2dPlugin {
@@ -24,7 +23,7 @@ impl Plugin for TextureLight2dPlugin {
 /// Represents a texture light in a 2D environment
 #[derive(Component, Clone, Reflect, AsBindGroup)]
 #[require(SyncToRenderWorld, Transform, Visibility, VisibilityClass)]
-#[component(on_add = add_visibility_class::<TextureLight2d>)]
+#[component(on_add = add_visibility_class::<Self>)]
 #[uniform(0, Texture2dGpuType)]
 pub struct TextureLight2d {
     /// The color of the texture light
@@ -66,15 +65,14 @@ impl AsBindGroupShaderType<Texture2dGpuType> for TextureLight2d {
 }
 
 impl Light2dMaterial for TextureLight2d {
-    fn fragment_shader() -> ShaderRef {
-        ShaderRef::Path(
-            AssetPath::from_path_buf(embedded_path!("texture_light2d.wgsl"))
-                .with_source("embedded"),
-        )
+    fn fragment_shader() -> Light2dShaderRef {
+        AssetPath::from_path_buf(embedded_path!("texture_light2d.wgsl"))
+            .with_source("embedded")
+            .into()
     }
 
     #[inline]
     fn light_size(&self) -> Light2dSize {
-        Light2dSize::Handle(self.image.clone())
+        self.image.clone().into()
     }
 }

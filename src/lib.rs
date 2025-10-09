@@ -12,7 +12,7 @@ mod shadows2d;
 pub mod prelude {
     pub use crate::light2d::{
         point_light2d::PointLight2d,
-        render::{CustomLight2dPlugin, Light2dBlendMode, Light2dMaterial, Light2dSize},
+        render::{CustomLight2dPlugin, Light2dMaterial, Light2dShaderRef, Light2dSize},
         spot_light2d::SpotLight2d,
         texture_light2d::TextureLight2d,
     };
