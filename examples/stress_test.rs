@@ -1,7 +1,8 @@
 use bevy::{
     color::palettes::tailwind::{GRAY_300, GRAY_800},
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig},
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     prelude::*,
+    window::PresentMode,
 };
 use bevy_lit::prelude::*;
 use rand::{self, rngs::SmallRng, Rng, SeedableRng};
@@ -11,7 +12,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
-                    present_mode: bevy::window::PresentMode::Immediate,
+                    present_mode: PresentMode::Immediate,
                     ..default()
                 }),
                 ..default()
@@ -20,10 +21,6 @@ fn main() {
             FpsOverlayPlugin {
                 config: FpsOverlayConfig {
                     enabled: true,
-                    frame_time_graph_config: FrameTimeGraphConfig {
-                        enabled: false,
-                        ..default()
-                    },
                     ..default()
                 },
             },

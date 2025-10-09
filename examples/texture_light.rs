@@ -50,7 +50,6 @@ fn setup(
         TextureLight2d {
             image: asset_server.load("light_mask.png"),
             color: Color::from(YELLOW_400),
-            intensity: 0.5,
             ..default()
         },
         Sprite::sized(Vec2::splat(8.0)),
