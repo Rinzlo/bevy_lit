@@ -4,10 +4,13 @@
 
 A simple 2D lighting library **designed for Bevy**. It provides basic lighting features through the types:
 
-- `Lighting2dSettings`: Controls lighting parameters such as shadow softness.
-- `AmbientLight2d`: Provides a general light source that illuminates the entire scene uniformly.
-- `PointLight2d`: Emits light from a specific point, simulating light sources like lamps or torches.
-- `LightOccluder2d`: Creates shadows and blocks light from `PointLight2d` along side any `Mesh2d`.
+## Features
+
+- Per camera settings to control lighting parameters such as shadow softness and more
+- Multiple light sources including `PointLight2d`, `SpotLight2d` and `TextureLight2d`
+- Primitives to create your own light source using `CustomLight2dPlugin` and `Light2dMaterial`
+- Light occlusion through `LightOccluder2d` that can be used along side any `Mesh2d`
+- WASM support for WebGPU
 
 ## Getting Started
 
@@ -71,17 +74,6 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 | `0.16` | `0.7`      |
 | `0.15` | `0.4..0.6` |
 | `0.14` | `0.3`      |
-
-
-## Coming soon
-
-- Normal maps
-- Texture light sources
-- Occlusion layers
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
 
 ## License
 
