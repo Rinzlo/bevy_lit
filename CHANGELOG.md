@@ -1,22 +1,21 @@
 # Changelog
 
-## Next
+## 0.8.0
 
 ### Features
 
-- [x] Bevy 0.17 support
-- [x] New light sources:
-  - [x] `SpotLight2d`
-  - [x] `TextureLight2d`
-- [x] Introduces `Light2dMaterial` and `CustomLight2dPlugin` that provide high level abstraction to create custom 2d lights
-- [ ] New `LitMaterial` Component with support for normal maps, masking and occlusion
+- Bevy 0.17 support
+- New light sources:
+  - `SpotLight2d`
+  - `TextureLight2d`
+- Introduces `Light2dMaterial` and `CustomLight2dPlugin` that provide high level abstraction to create custom 2d lights
 
 ### Breaking
 
-- [x] To match other light sources `AmbientLight2d.brightness` is now `AmbientLight2d.intensity`
-- [x] `PointLight2d.radius` is now `PointLight2d.outer_radius`
-- [x] `PointLight.cast_shadows` is now `PointLight2d.cast_shadows`
-- [ ] `LightOccluder2D` has been replaced by `LitMaterial`. Now to cast a shadow from a mesh use `LitMaterial.cast_shadows`
+- To match other light sources `AmbientLight2d.brightness` is now `AmbientLight2d.intensity`
+- `PointLight2d.radius` is now `PointLight2d.outer_radius`
+- `PointLight.cast_shadows` is now `PointLight2d.cast_shadows`
+- `LightOccluder2D` has been replaced by `LitMaterial`. Now to cast a shadow from a mesh use `LitMaterial.cast_shadows`
 
 ## 0.7.0
 

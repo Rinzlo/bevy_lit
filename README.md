@@ -1,4 +1,4 @@
-![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.webp)
+![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.png)
 
 # `bevy_lit`
 
@@ -50,7 +50,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.spawn(PointLight2d {
         color: Color::WHITE,
         intensity: 3.0,
-        radius: 200.0,
+        outer_radius: 200.0,
         falloff: 2.0,
         ..default(),
     });
@@ -67,6 +67,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 | `bevy` | `bevy_lit` |
 | ------ | ---------- |
+| `0.17` | `0.8`      |
 | `0.16` | `0.7`      |
 | `0.15` | `0.4..0.6` |
 | `0.14` | `0.3`      |
