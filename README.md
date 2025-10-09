@@ -12,7 +12,7 @@ A simple 2D lighting library **designed for Bevy**. It provides basic lighting f
 - Light occlusion through `LightOccluder2d` that can be used along side any `Mesh2d`
 - WASM support for WebGPU
 
-## Getting Started
+## Getting started
 
 ### Installation
 
