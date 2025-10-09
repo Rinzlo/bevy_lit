@@ -30,7 +30,7 @@ fn vertex(in: VertexInput) -> VertexOutput {
         in.i_model_transpose_col1,
         in.i_model_transpose_col2,
     )) * vec4<f32>(vertex_position, 1.0);
-    out.uv = vertex_position.xy;
+    out.uv = vec2<f32>(vertex_position.x, 1.0 - vertex_position.y);
     out.translation_rotation = in.i_original_translation_rotation;
 
     return out;
