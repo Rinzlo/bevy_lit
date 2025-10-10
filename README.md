@@ -6,10 +6,10 @@ A simple 2D lighting library **designed for Bevy**.
 
 ## Features
 
-- Per camera fine grain control over lighting parameters such as shadow softness and more
 - Multiple light sources including `PointLight2d`, `SpotLight2d` and `TextureLight2d`
 - Includes primitives `CustomLight2dPlugin` and `Light2dMaterial` for defining custom light sources
 - Light occlusion through `LightOccluder2d` that can be used along side any `Mesh2d`
+- Per camera fine grain control over lighting parameters such as shadow softness and more
 - Terraria like light penetration effect
 - Web support for WebGPU
 
