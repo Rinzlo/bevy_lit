@@ -1,5 +1,3 @@
-pub mod render;
-
 use bevy::{asset::AsAssetId, prelude::*, render::extract_component::ExtractComponent};
 
 /// A light occluder component. Should be used alongside a Mesh2d

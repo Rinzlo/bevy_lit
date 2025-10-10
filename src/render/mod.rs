@@ -1,6 +1,6 @@
 mod light2d_node;
 mod post_process_node;
-mod sdf_node;
+mod voronoi_node;
 
 use std::ops::Range;
 
@@ -34,14 +34,14 @@ use crate::{
     post_process::render::ExtractedLighting2dSettings,
     render::{
         light2d_node::Light2dDrawNode, post_process_node::Light2dPostProcessDrawNode,
-        sdf_node::VoronoiDrawNode,
+        voronoi_node::VoronoiDrawNode,
     },
     settings::Lighting2dSettings,
 };
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
 pub enum Light2d {
-    SdfPass,
+    VoronoiPass,
     LightPass,
     PostProcessPass,
 }
@@ -56,9 +56,9 @@ impl Plugin for Light2dRenderPlugin {
         render_app
             .init_resource::<VoronoiTextures>()
             .init_resource::<LightingTextures>()
-            .init_resource::<ViewSortedRenderPhases<MaskPhase>>()
+            .init_resource::<ViewSortedRenderPhases<VoronoiPhase>>()
             .init_resource::<ViewSortedRenderPhases<Light2dPhase>>()
-            .init_resource::<DrawFunctions<MaskPhase>>()
+            .init_resource::<DrawFunctions<VoronoiPhase>>()
             .init_resource::<DrawFunctions<Light2dPhase>>()
             .add_systems(
                 ExtractSchedule,
@@ -68,7 +68,7 @@ impl Plugin for Light2dRenderPlugin {
                 Render,
                 prepare_lighting_textures.in_set(RenderSystems::PrepareBindGroups),
             )
-            .add_render_graph_node::<ViewNodeRunner<VoronoiDrawNode>>(Core2d, Light2d::SdfPass)
+            .add_render_graph_node::<ViewNodeRunner<VoronoiDrawNode>>(Core2d, Light2d::VoronoiPass)
             .add_render_graph_node::<ViewNodeRunner<Light2dDrawNode>>(Core2d, Light2d::LightPass)
             .add_render_graph_node::<ViewNodeRunner<Light2dPostProcessDrawNode>>(
                 Core2d,
@@ -77,7 +77,7 @@ impl Plugin for Light2dRenderPlugin {
             .add_render_graph_edges(
                 Core2d,
                 (
-                    Light2d::SdfPass,
+                    Light2d::VoronoiPass,
                     Light2d::LightPass,
                     Node2d::EndMainPass,
                     Light2d::PostProcessPass,
@@ -87,7 +87,7 @@ impl Plugin for Light2dRenderPlugin {
     }
 }
 
-pub struct MaskPhase {
+pub struct VoronoiPhase {
     pub sort_key: FloatOrd,
     pub pipeline: CachedRenderPipelineId,
     pub draw_function: DrawFunctionId,
@@ -97,7 +97,7 @@ pub struct MaskPhase {
     pub indexed: bool,
 }
 
-impl PhaseItem for MaskPhase {
+impl PhaseItem for VoronoiPhase {
     #[inline]
     fn entity(&self) -> Entity {
         self.entity.0
@@ -134,7 +134,7 @@ impl PhaseItem for MaskPhase {
     }
 }
 
-impl SortedPhaseItem for MaskPhase {
+impl SortedPhaseItem for VoronoiPhase {
     type SortKey = FloatOrd;
 
     #[inline]
@@ -147,7 +147,7 @@ impl SortedPhaseItem for MaskPhase {
     }
 }
 
-impl CachedRenderPipelinePhaseItem for MaskPhase {
+impl CachedRenderPipelinePhaseItem for VoronoiPhase {
     #[inline]
     fn cached_pipeline(&self) -> CachedRenderPipelineId {
         self.pipeline
@@ -224,7 +224,7 @@ impl CachedRenderPipelinePhaseItem for Light2dPhase {
 
 pub fn extract_light2d_phases(
     cameras: Extract<Query<(Entity, &Camera), (With<Camera2d>, With<Lighting2dSettings>)>>,
-    mut mask_phases: ResMut<ViewSortedRenderPhases<MaskPhase>>,
+    mut mask_phases: ResMut<ViewSortedRenderPhases<VoronoiPhase>>,
     mut light2d_phases: ResMut<ViewSortedRenderPhases<Light2dPhase>>,
     mut live_entities: Local<HashSet<RetainedViewEntity>>,
 ) {
@@ -254,12 +254,6 @@ pub struct FlipTexture {
     texture_b: CachedTexture,
 }
 
-#[derive(Resource, Deref, DerefMut, Default)]
-pub struct LightingTextures(pub HashMap<RetainedViewEntity, FlipTexture>);
-
-#[derive(Resource, Deref, DerefMut, Default)]
-pub struct VoronoiTextures(pub HashMap<RetainedViewEntity, FlipTexture>);
-
 impl FlipTexture {
     pub fn input(&self) -> &CachedTexture {
         if self.flip {
@@ -282,34 +276,11 @@ impl FlipTexture {
     }
 }
 
-fn create_aux_texture(
-    view_target: &ViewTarget,
-    texture_cache: &mut TextureCache,
-    render_device: &RenderDevice,
-    label: &'static str,
-    scale: f32,
-) -> CachedTexture {
-    let size = view_target.main_texture().size();
-    let size = Extent3d {
-        width: (size.width as f32 * scale) as u32,
-        height: (size.height as f32 * scale) as u32,
-        depth_or_array_layers: size.depth_or_array_layers,
-    };
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct LightingTextures(pub HashMap<RetainedViewEntity, FlipTexture>);
 
-    texture_cache.get(
-        render_device,
-        TextureDescriptor {
-            label: Some(label),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba16Float,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        },
-    )
-}
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct VoronoiTextures(pub HashMap<RetainedViewEntity, FlipTexture>);
 
 pub fn prepare_lighting_textures(
     views: Query<(&ViewTarget, &ExtractedView, &ExtractedLighting2dSettings)>,
@@ -324,24 +295,40 @@ pub fn prepare_lighting_textures(
     for (view_target, extracted_view, settings) in &views {
         live_entities.insert(extracted_view.retained_view_entity);
 
+        let size = view_target.main_texture().size();
+        let size = Extent3d {
+            width: (size.width as f32 * settings.scale) as u32,
+            height: (size.height as f32 * settings.scale) as u32,
+            depth_or_array_layers: size.depth_or_array_layers,
+        };
+
+        let descriptor = TextureDescriptor {
+            label: None,
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba16Float,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        };
+
+        let mut tex = |label: &'static str| {
+            texture_cache.get(
+                &render_device,
+                TextureDescriptor {
+                    label: Some(label),
+                    ..descriptor
+                },
+            )
+        };
+
         voronoi_textures.insert(
             extracted_view.retained_view_entity,
             FlipTexture {
                 flip: false,
-                texture_a: create_aux_texture(
-                    view_target,
-                    &mut texture_cache,
-                    &render_device,
-                    "voronoi_texture_a",
-                    settings.scale,
-                ),
-                texture_b: create_aux_texture(
-                    view_target,
-                    &mut texture_cache,
-                    &render_device,
-                    "voronoi_texture_b",
-                    settings.scale,
-                ),
+                texture_a: tex("voronoi_texture_a"),
+                texture_b: tex("voronoi_texture_b"),
             },
         );
 
@@ -349,20 +336,8 @@ pub fn prepare_lighting_textures(
             extracted_view.retained_view_entity,
             FlipTexture {
                 flip: false,
-                texture_a: create_aux_texture(
-                    view_target,
-                    &mut texture_cache,
-                    &render_device,
-                    "lighting_texture_a",
-                    settings.scale,
-                ),
-                texture_b: create_aux_texture(
-                    view_target,
-                    &mut texture_cache,
-                    &render_device,
-                    "lighting_texture_b",
-                    settings.scale,
-                ),
+                texture_a: tex("lighting_texture_a"),
+                texture_b: tex("lighting_texture_b"),
             },
         );
     }

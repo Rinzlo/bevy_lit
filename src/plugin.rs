@@ -5,9 +5,9 @@ use crate::{
         point_light::PointLight2dPlugin, spot_light::SpotLight2dPlugin,
         texture_light::TextureLight2dPlugin,
     },
-    occlusion::render::Voronoi2dPlugin,
     post_process::Lighting2dSettingsPlugin,
     render::Light2dRenderPlugin,
+    voronoi::Voronoi2dPlugin,
 };
 
 /// A plugin for adding 2D lighting in the Bevy engine.

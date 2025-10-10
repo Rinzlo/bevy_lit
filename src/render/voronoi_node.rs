@@ -15,14 +15,14 @@ use bevy::{
 };
 
 use crate::{
-    occlusion::render::FloodPipeline,
-    render::{FlipTexture, MaskPhase, VoronoiTextures},
+    render::{FlipTexture, VoronoiPhase, VoronoiTextures},
+    voronoi::FloodPipeline,
 };
 
 pub fn run_mask_pass<'w>(
     world: &'w World,
     render_context: &mut RenderContext<'w>,
-    phase: &SortedRenderPhase<MaskPhase>,
+    phase: &SortedRenderPhase<VoronoiPhase>,
     view_entity: &Entity,
     voronoi_texture: &mut FlipTexture,
     camera: &ExtractedCamera,
@@ -168,7 +168,7 @@ impl ViewNode for VoronoiDrawNode {
         let view_entity = graph.view_entity();
 
         let Some(mask_phase) = world
-            .resource::<ViewSortedRenderPhases<MaskPhase>>()
+            .resource::<ViewSortedRenderPhases<VoronoiPhase>>()
             .get(&view.retained_view_entity)
         else {
             return Ok(());

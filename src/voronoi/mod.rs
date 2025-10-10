@@ -40,10 +40,7 @@ use bevy::{
     utils::Parallel,
 };
 
-use crate::{
-    prelude::{LightOccluder2d, Lighting2dSettings},
-    render::MaskPhase,
-};
+use crate::{occlusion::LightOccluder2d, prelude::Lighting2dSettings, render::VoronoiPhase};
 
 pub struct Voronoi2dPlugin;
 impl Plugin for Voronoi2dPlugin {
@@ -72,12 +69,12 @@ impl Plugin for Voronoi2dPlugin {
             .init_resource::<SpecializedMeshPipelines<MaskPipeline>>()
             .init_resource::<RenderVoronoiMaterials>()
             .init_resource::<MaskMaterialBindGroups>()
-            .init_resource::<DrawFunctions<MaskPhase>>()
+            .init_resource::<DrawFunctions<VoronoiPhase>>()
             .init_resource::<SpecializedMaterial2dPipelineCache<LightOccluder2d>>()
             .init_resource::<EntitySpecializationTicks<Lighting2dSettings>>()
             .init_resource::<EntitySpecializationTicks<LightOccluder2d>>()
             .init_resource::<VoronoiViewSpecializationTicks>()
-            .add_render_command::<MaskPhase, DrawMaskMesh>()
+            .add_render_command::<VoronoiPhase, DrawMaskMesh>()
             .add_systems(
                 ExtractSchedule,
                 (
@@ -97,7 +94,7 @@ impl Plugin for Voronoi2dPlugin {
                 Render,
                 (
                     queue_mask_meshes.in_set(RenderSystems::QueueMeshes),
-                    batch_and_prepare_sorted_render_phase::<MaskPhase, Mesh2dPipeline>
+                    batch_and_prepare_sorted_render_phase::<VoronoiPhase, Mesh2dPipeline>
                         .in_set(RenderSystems::PrepareResources),
                     prepare_mask_material_bind_groups.in_set(RenderSystems::PrepareBindGroups),
                 ),
@@ -273,11 +270,11 @@ pub fn init_mask_pipeline(
 }
 
 pub fn queue_mask_meshes(
-    mask_draw_functions: Res<DrawFunctions<MaskPhase>>,
+    mask_draw_functions: Res<DrawFunctions<VoronoiPhase>>,
     render_meshes: Res<RenderAssets<RenderMesh>>,
     pipeline_cache: Res<PipelineCache>,
     mut render_mesh_instances: ResMut<RenderMesh2dInstances>,
-    mut mask_render_phase: ResMut<ViewSortedRenderPhases<MaskPhase>>,
+    mut mask_render_phase: ResMut<ViewSortedRenderPhases<VoronoiPhase>>,
     mut mask_pipelines: ResMut<SpecializedMeshPipelines<MaskPipeline>>,
     mask_pipeline: Res<MaskPipeline>,
     view_key_cache: Res<ViewKeyCache>,
@@ -354,7 +351,7 @@ pub fn queue_mask_meshes(
             view_specialized_material_pipeline_cache
                 .insert(*view_entity, (ticks.this_run(), pipeline_id));
 
-            mask_phase.add(MaskPhase {
+            mask_phase.add(VoronoiPhase {
                 sort_key: FloatOrd(mesh_instance.transforms.world_from_local.translation.z),
                 pipeline: pipeline_id,
                 draw_function: draw_mask_mesh,
