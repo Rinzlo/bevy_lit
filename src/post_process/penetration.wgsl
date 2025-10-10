@@ -40,7 +40,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
             let offset = direction * distance;
             let sample_pos = pos + offset;
             let uv = world_to_uv(vec3(sample_pos, 0.0), view);
-            let sample = textureSample(lighting_texture, sampler_obj, uv);
+            let sample = textureSampleLevel(lighting_texture, sampler_obj, uv, 0.0);
 
             // Smooth falloff weight
             let weight = pow(1.0 - t, p.falloff);

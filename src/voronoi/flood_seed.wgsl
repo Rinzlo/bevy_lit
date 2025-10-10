@@ -20,7 +20,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
     for (var i = 0; i < 4; i++) {
         let neighbor_uv = (in.position.xy + offsets[i]) / screen_size;
-        let neighbor_mask = textureSample(mask_texture, sampler_obj, neighbor_uv).r;
+        let neighbor_mask = textureSampleLevel(mask_texture, sampler_obj, neighbor_uv, 0.0).r;
 
         // Mark edge pixels as seeds, blue channel means original seed;
         if neighbor_mask != mask {
