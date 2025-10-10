@@ -226,7 +226,6 @@ impl ViewNode for VoronoiDrawNode {
             &mut voronoi_texture,
             UVec2::new(1, 1),
         );
-        voronoi_texture.flip();
 
         Ok(())
     }
