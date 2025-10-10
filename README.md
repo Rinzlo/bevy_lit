@@ -2,15 +2,16 @@
 
 # `bevy_lit`
 
-A simple 2D lighting library **designed for Bevy**. It provides basic lighting features through the types:
+A simple 2D lighting library **designed for Bevy**.
 
 ## Features
 
 - Per camera settings to control lighting parameters such as shadow softness and more
 - Multiple light sources including `PointLight2d`, `SpotLight2d` and `TextureLight2d`
-- Primitives to create your own light source using `CustomLight2dPlugin` and `Light2dMaterial`
+- Includes primitives `CustomLight2dPlugin` and `Light2dMaterial` for defining custom light sources
 - Light occlusion through `LightOccluder2d` that can be used along side any `Mesh2d`
-- WASM support for WebGPU
+- Terraria like light penetration effect
+- Web support for WebGPU
 
 ## Getting started
 
