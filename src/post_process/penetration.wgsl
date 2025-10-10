@@ -59,8 +59,16 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
 fn get_sdf(pos: vec2<f32>) -> f32 {
     let uv = world_to_uv(vec3(pos, 0.0), view);
-    let seed = textureSampleLevel(voronoi_texture, sampler_obj, uv, 0.0);
-    let dist = length(pos - frag_to_world(seed / settings.scale, view).xy);
+    let samp = textureSampleLevel(voronoi_texture, sampler_obj, uv, 0.0);
+
+    // Original seed
+    if samp.z == 1.0 {
+        return 0.0;
+    }
+
+    let seed = frag_to_world(samp / settings.scale, view).xy;
+    let dist = length(pos - seed);
+
     // Determine if the pixel is inside or outside the shape
-    return select(dist, -dist, seed.w == 1.0);
+    return select(dist, -dist, samp.w == 1.0);
 }

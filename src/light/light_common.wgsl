@@ -41,10 +41,18 @@ fn attenuation(inner: f32, outer: f32, falloff: f32, diff: f32) -> f32 {
 
 fn get_sdf(pos: vec2<f32>) -> f32 {
     let uv = world_to_uv(vec3(pos, 0.0), view);
-    let seed = textureSampleLevel(voronoi_texture, voronoi_sampler, uv, 0.0);
-    let dist = length(pos - frag_to_world(seed / settings.scale, view).xy);
+    let samp = textureSampleLevel(voronoi_texture, voronoi_sampler, uv, 0.0);
+
+    // Original seed
+    if samp.z == 1.0 {
+        return 0.0;
+    }
+
+    let seed = frag_to_world(samp / settings.scale, view).xy;
+    let dist = length(pos - seed);
+
     // Determine if the pixel is inside or outside the shape
-    return select(dist, -dist, seed.w == 1.0);
+    return select(dist, -dist, samp.w == 1.0);
 }
 
 // Implementation follows the demo in this article
