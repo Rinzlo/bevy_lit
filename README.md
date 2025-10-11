@@ -1,15 +1,19 @@
-![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.webp)
+![bevy_lit demo](https://github.com/malbernaz/bevy_lit/raw/main/static/demo.png)
 
 # `bevy_lit`
 
-A simple 2D lighting library **designed for Bevy**. It provides basic lighting features through the types:
+A simple 2D lighting library **designed for Bevy**.
 
-- `Lighting2dSettings`: Controls lighting parameters such as shadow softness.
-- `AmbientLight2d`: Provides a general light source that illuminates the entire scene uniformly.
-- `PointLight2d`: Emits light from a specific point, simulating light sources like lamps or torches.
-- `LightOccluder2d`: Creates shadows and blocks light from `PointLight2d` along side any `Mesh2d`.
+## Features
 
-## Getting Started
+- Multiple light sources including `PointLight2d`, `SpotLight2d` and `TextureLight2d`
+- Includes primitives `CustomLight2dPlugin` and `Light2dMaterial` for defining custom light sources
+- Light occlusion through `LightOccluder2d` that can be used along side any `Mesh2d`
+- Per camera fine grain control over lighting parameters such as shadow softness and more
+- Terraria-like light penetration effect
+- Web support for WebGPU
+
+## Getting started
 
 ### Installation
 
@@ -50,14 +54,14 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.spawn(PointLight2d {
         color: Color::WHITE,
         intensity: 3.0,
-        radius: 200.0,
+        outer_radius: 200.0,
         falloff: 2.0,
         ..default(),
     });
 
     commands.spawn((
         Mesh2d(meshes.add(Circle::new(50.0))),
-        LightOccluder2d::default()),
+        LightOccluder2d::default(),
         Transform::from_xyz(0.0, 200.0, 0.0)
     ));
 }
@@ -67,14 +71,10 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 | `bevy` | `bevy_lit` |
 | ------ | ---------- |
+| `0.17` | `0.8`      |
 | `0.16` | `0.7`      |
 | `0.15` | `0.4..0.6` |
 | `0.14` | `0.3`      |
-
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
 
 ## License
 

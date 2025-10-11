@@ -1,18 +1,21 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
+#import bevy_render::view::View
 #import bevy_lit::{
-    types::Lighting2dSettings,
+    settings_types::Lighting2dSettings,
     view_transformations::{frag_to_world, world_to_uv},
 }
 
+@group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<uniform> settings: Lighting2dSettings;
 @group(0) @binding(2) var lighting_texture: texture_2d<f32>;
-@group(0) @binding(3) var lighting_sampler: sampler;
+@group(0) @binding(3) var voronoi_texture: texture_2d<f32>;
+@group(0) @binding(4) var sampler_obj: sampler;
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
-    let pos = frag_to_world(in.position / settings.scale).xy;
-    let current = textureSample(lighting_texture, lighting_sampler, in.uv);
-    let sdf = current.a;
+    let pos = frag_to_world(in.position / settings.scale, view).xy;
+    let current = textureSample(lighting_texture, sampler_obj, in.uv);
+    let sdf = get_sdf(pos);
     let p = settings.penetration;
 
     // Skip if outside occluder or penetration range
@@ -36,8 +39,8 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
             let distance = t * p.max;
             let offset = direction * distance;
             let sample_pos = pos + offset;
-            let uv = world_to_uv(vec3(sample_pos, 0.0));
-            let sample = textureSample(lighting_texture, lighting_sampler, uv);
+            let uv = world_to_uv(vec3(sample_pos, 0.0), view);
+            let sample = textureSampleLevel(lighting_texture, sampler_obj, uv, 0.0);
 
             // Smooth falloff weight
             let weight = pow(1.0 - t, p.falloff);
@@ -52,4 +55,20 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     }
 
     return vec4(penetration_color, sdf);
+}
+
+fn get_sdf(pos: vec2<f32>) -> f32 {
+    let uv = world_to_uv(vec3(pos, 0.0), view);
+    let samp = textureSampleLevel(voronoi_texture, sampler_obj, uv, 0.0);
+
+    // Original seed
+    if samp.z == 1.0 {
+        return 0.0;
+    }
+
+    let seed = frag_to_world(samp / settings.scale, view).xy;
+    let dist = length(pos - seed);
+
+    // Determine if the pixel is inside or outside the shape
+    return select(dist, -dist, samp.w == 1.0);
 }

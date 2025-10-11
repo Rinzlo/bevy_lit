@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.8.0
+
+### Features
+
+- **Bevy 0.17 support** – upgraded to the latest Bevy release
+- **New light sources** – added `SpotLight2d` and `TextureLight2d` for more flexible lighting options
+- **Custom 2D light sources** – introduced `Light2dMaterial` and `CustomLight2dPlugin`, enabling creation of entirely new 2D light types
+
+### Breaking
+
+- To match other light sources `AmbientLight2d.brightness` is now `AmbientLight2d.intensity`
+- `PointLight2d.radius` is now `PointLight2d.outer_radius`
+- `PointLight.shadows_enabled` is now `PointLight2d.cast_shadows`
+
+### Migration
+
+```diff
+ commands.spawn((
+     ..
+     AmbientLight2d {
+-         brightness: 0.5,
++         intensity: 0.5,
+          ..default()
+     }
+ ));
+
+ commands.spawn((
+     PointLight2d {
+-         shadows_enabled: false,
++         cast_shadows: false,
+-         radius: 100.0,
++         outer_radius: 100.0,
+          ..default()
+     }
+ ));
+```
+
 ## 0.7.0
 
 ### Features

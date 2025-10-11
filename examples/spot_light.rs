@@ -1,5 +1,5 @@
 use bevy::{
-    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, GRAY_700, YELLOW_600},
+    color::palettes::tailwind::{GRAY_500, GRAY_700},
     prelude::*,
     window::PrimaryWindow,
 };
@@ -8,18 +8,14 @@ use bevy_lit::prelude::*;
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins, Lighting2dPlugin))
-        .insert_resource(ClearColor(Color::from(GRAY_200)))
+        .insert_resource(ClearColor(Color::from(GRAY_500)))
         .add_systems(Startup, setup)
         .add_systems(Update, update_cursor_light)
-        .add_systems(FixedUpdate, update_moving_lights)
         .run();
 }
 
 #[derive(Component)]
 struct CursorLight;
-
-#[derive(Component)]
-struct MovingLights;
 
 const X_EXTENT: f32 = 700.;
 
@@ -31,19 +27,25 @@ fn setup(
     commands.spawn((
         Camera2d,
         Lighting2dSettings {
-            blur: 4,
-            edge_intensity: 8.0,
-            raymarch: RaymarchSettings {
-                max_steps: 32,
-                jitter_contrib: 0.5,
-                sharpness: 10.,
-            },
+            scale: 1.0,
             ..default()
         },
         AmbientLight2d {
-            intensity: 0.1,
-            color: Color::from(BLUE_300),
+            intensity: 0.2,
+            ..default()
         },
+    ));
+
+    commands.spawn((
+        CursorLight,
+        SpotLight2d {
+            intensity: 4.0,
+            outer_radius: 1024.0,
+            outer_angle: 15.0,
+            ..default()
+        },
+        Transform::from_xyz(0.0, 512.0, 0.0)
+            .with_rotation(Quat::from_rotation_z(-90_f32.to_radians())),
     ));
 
     let shapes = [
@@ -74,47 +76,12 @@ fn setup(
             ),
         ));
     }
-
-    let moving_point_light = PointLight2d {
-        color: Color::from(BLUE_600),
-        intensity: 2.0,
-        outer_radius: 1100.0,
-        falloff: 3.0,
-        ..default()
-    };
-
-    commands.spawn((
-        MovingLights,
-        Transform::default(),
-        Visibility::default(),
-        children![
-            (
-                moving_point_light.clone(),
-                Transform::from_xyz(-X_EXTENT + 50. / 2., 0.0, 0.0),
-            ),
-            (
-                moving_point_light,
-                Transform::from_xyz(X_EXTENT + 50. / 2., 0.0, 0.0),
-            )
-        ],
-    ));
-
-    commands.spawn((
-        CursorLight,
-        PointLight2d {
-            color: Color::from(YELLOW_600),
-            intensity: 2.0,
-            outer_radius: 400.0,
-            falloff: 10.0,
-            ..default()
-        },
-    ));
 }
 
 fn update_cursor_light(
     window_query: Query<&Window, With<PrimaryWindow>>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Lighting2dSettings>>,
-    mut point_light_query: Query<&mut Transform, With<CursorLight>>,
+    mut light_query: Query<&mut Transform, With<CursorLight>>,
 ) {
     let Ok((camera, camera_transform)) = camera_query.single() else {
         return;
@@ -124,7 +91,7 @@ fn update_cursor_light(
         return;
     };
 
-    let Ok(mut point_light_transform) = point_light_query.single_mut() else {
+    let Ok(mut transform) = light_query.single_mut() else {
         return;
     };
 
@@ -133,15 +100,15 @@ fn update_cursor_light(
         .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor).ok())
         .map(|ray| ray.origin.truncate().extend(0.0))
     {
-        point_light_transform.translation = world_position;
+        look_at_2d(&mut transform, world_position.xy());
     }
 }
 
-fn update_moving_lights(
-    time: Res<Time>,
-    mut point_light_query: Query<&mut Transform, With<MovingLights>>,
-) {
-    for mut transform in &mut point_light_query {
-        transform.rotation *= Quat::from_rotation_z(time.delta_secs() / 12.0);
+pub fn look_at_2d(transform: &mut Transform, target: Vec2) {
+    let delta = target - transform.translation.truncate();
+
+    if delta.length_squared() > f32::EPSILON {
+        let angle = delta.y.atan2(delta.x);
+        transform.rotation = Quat::from_rotation_z(angle);
     }
 }

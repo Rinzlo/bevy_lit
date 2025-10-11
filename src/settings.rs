@@ -1,14 +1,10 @@
 use bevy::{
     prelude::*,
-    reflect::Reflect,
     render::{
-        render_resource::ShaderType,
+        extract_component::ExtractComponent, render_resource::ShaderType,
         sync_world::SyncToRenderWorld,
-        view::{add_visibility_class, Visibility, VisibilityClass},
     },
-    transform::components::Transform,
 };
-use bevy_voronoi::prelude::{VoronoiCamera, VoronoiMaterial};
 
 /// Represents ambient light in a 2D environment. This component belongs to a [`Camera2d`] entity.
 #[derive(Component, Clone, Reflect)]
@@ -16,15 +12,15 @@ use bevy_voronoi::prelude::{VoronoiCamera, VoronoiMaterial};
 pub struct AmbientLight2d {
     /// The color of the ambient light.
     pub color: Color,
-    /// The brightness of the ambient light.
-    pub brightness: f32,
+    /// The intensity of the ambient light.
+    pub intensity: f32,
 }
 
 impl Default for AmbientLight2d {
     fn default() -> Self {
         Self {
             color: Color::WHITE,
-            brightness: 1.0,
+            intensity: 1.0,
         }
     }
 }
@@ -80,8 +76,8 @@ impl Default for PenetrationSettings {
 
 /// Settings for 2D lighting. This component belongs to a [`Camera2d`] entity and is mandatory for
 /// lighting effects
-#[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, AmbientLight2d, VoronoiCamera)]
+#[derive(Component, Clone, Reflect, ExtractComponent)]
+#[require(SyncToRenderWorld, AmbientLight2d)]
 pub struct Lighting2dSettings {
     /// Raymarch settings
     pub raymarch: RaymarchSettings,
@@ -97,12 +93,6 @@ pub struct Lighting2dSettings {
     pub blur: u32,
 }
 
-impl Lighting2dSettings {
-    pub fn create_voronoi_camera() -> VoronoiCamera {
-        VoronoiCamera::default()
-    }
-}
-
 impl Default for Lighting2dSettings {
     fn default() -> Self {
         Self {
@@ -113,48 +103,5 @@ impl Default for Lighting2dSettings {
             edge_intensity: 0.0,
             blur: 0,
         }
-    }
-}
-
-/// Represents a point light in a 2D environment.
-#[derive(Component, Clone, Reflect)]
-#[require(SyncToRenderWorld, Transform, Visibility, VisibilityClass)]
-#[component(on_add = add_visibility_class::<PointLight2d>)]
-pub struct PointLight2d {
-    /// The color of the point light.
-    pub color: Color,
-    /// The intensity of the point light.
-    pub intensity: f32,
-    /// The radius of the point light's influence.
-    pub radius: f32,
-    /// The falloff rate of the point light.
-    pub falloff: f32,
-    /// wether the point light should project shadows
-    pub shadows_enabled: bool,
-}
-
-impl Default for PointLight2d {
-    fn default() -> Self {
-        Self {
-            color: Color::WHITE,
-            intensity: 1.0,
-            radius: 64.0,
-            falloff: 1.0,
-            shadows_enabled: true,
-        }
-    }
-}
-
-/// A light occluder component. Should be used alongside a Mesh2d
-#[derive(Component, Clone, Debug, Default, Reflect)]
-#[require(VoronoiMaterial)]
-pub struct LightOccluder2d {
-    /// Any texture with a transparent background. The occluder will take it's shape.
-    pub occluder_mask: Handle<Image>,
-}
-
-impl LightOccluder2d {
-    pub fn new(occluder_mask: Handle<Image>) -> Self {
-        Self { occluder_mask }
     }
 }

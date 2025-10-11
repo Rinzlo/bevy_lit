@@ -1,5 +1,5 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
-#import bevy_lit::types::Lighting2dSettings
+#import bevy_lit::settings_types::Lighting2dSettings
 
 @group(0) @binding(0) var<uniform> settings: Lighting2dSettings;
 @group(0) @binding(1) var view_texture: texture_2d<f32>;

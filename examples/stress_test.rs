@@ -2,6 +2,7 @@ use bevy::{
     color::palettes::tailwind::{GRAY_300, GRAY_800},
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     prelude::*,
+    window::PresentMode,
 };
 use bevy_lit::prelude::*;
 use rand::{self, rngs::SmallRng, Rng, SeedableRng};
@@ -11,7 +12,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
-                    present_mode: bevy::window::PresentMode::Immediate,
+                    present_mode: PresentMode::Immediate,
                     ..default()
                 }),
                 ..default()
@@ -45,24 +46,17 @@ fn setup(
             scale: 0.5,
             ..OrthographicProjection::default_2d()
         }),
-        Lighting2dSettings {
-            raymarch: RaymarchSettings {
-                max_steps: 16,
-                jitter_contrib: 0.0,
-                sharpness: 4.0,
-            },
-            ..default()
-        },
+        Lighting2dSettings::default(),
     ));
 
     // spawn point light
     commands.spawn((
         Torch,
         PointLight2d {
-            color: Color::srgb(1.0, 1.0, 1.0),
+            color: Color::WHITE,
             intensity: 3.0,
-            radius: 100.0,
-            falloff: 2.0,
+            outer_radius: 200.0,
+            falloff: 1.0,
             ..default()
         },
     ));

@@ -1,27 +1,13 @@
-use bevy::color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, YELLOW_600};
-use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
-use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
+use bevy::{
+    color::palettes::tailwind::{BLUE_300, BLUE_600, GRAY_200, YELLOW_600},
+    prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_lit::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    present_mode: bevy::window::PresentMode::Immediate,
-                    ..default()
-                }),
-                ..default()
-            }),
-            Lighting2dPlugin,
-            FpsOverlayPlugin {
-                config: FpsOverlayConfig {
-                    enabled: true,
-                    ..default()
-                },
-            },
-        ))
+        .add_plugins((DefaultPlugins, Lighting2dPlugin))
         .insert_resource(ClearColor(Color::from(GRAY_200)))
         .add_systems(Startup, setup)
         .add_systems(Update, update_cursor_light)
@@ -41,6 +27,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
     commands.spawn((
         Camera2d,
         Lighting2dSettings {
+            blur: 4,
             edge_intensity: 4.0,
             raymarch: RaymarchSettings {
                 max_steps: 32,
@@ -50,7 +37,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
             ..default()
         },
         AmbientLight2d {
-            brightness: 0.1,
+            intensity: 0.1,
             color: Color::from(BLUE_300),
         },
     ));
@@ -66,40 +53,37 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, assets: Res<A
         LightOccluder2d::new(lettering_handle),
     ));
 
-    commands
-        .spawn((MovingLights, Transform::default(), Visibility::default()))
-        .with_children(|builder| {
-            let point_light = PointLight2d {
-                intensity: 2.0,
-                radius: 1100.0,
-                falloff: 3.0,
-                ..default()
-            };
+    let point_light = PointLight2d {
+        intensity: 2.0,
+        outer_radius: 1100.0,
+        falloff: 3.0,
+        color: Color::from(BLUE_600),
+        ..default()
+    };
 
-            builder.spawn((
-                PointLight2d {
-                    color: Color::from(BLUE_600),
-                    ..point_light
-                },
+    commands.spawn((
+        MovingLights,
+        Transform::default(),
+        Visibility::default(),
+        children![
+            (
+                point_light.clone(),
                 Transform::from_xyz(-X_EXTENT + 50. / 2., 0.0, 0.0),
-            ));
-
-            builder.spawn((
-                PointLight2d {
-                    color: Color::from(BLUE_600),
-                    ..point_light
-                },
+            ),
+            (
+                point_light,
                 Transform::from_xyz(X_EXTENT + 50. / 2., 0.0, 0.0),
-            ));
-        });
+            )
+        ],
+    ));
 
     commands.spawn((
         CursorLight,
         PointLight2d {
-            intensity: 2.0,
-            radius: 400.0,
-            falloff: 10.0,
             color: Color::from(YELLOW_600),
+            intensity: 2.0,
+            outer_radius: 400.0,
+            falloff: 10.0,
             ..default()
         },
     ));
