@@ -96,13 +96,11 @@ fn setup(
 }
 
 fn update_cursor_position(
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<Lighting2dSettings>>,
-    mut cursor_query: Query<&mut Transform, With<OccluderCursor>>,
+    window: Single<&Window, With<PrimaryWindow>>,
+    camera: Single<(&Camera, &GlobalTransform), With<Lighting2dSettings>>,
+    mut cursor_transform: Single<&mut Transform, With<OccluderCursor>>,
 ) {
-    let (camera, camera_transform) = camera_query.single().unwrap();
-    let window = window_query.single().unwrap();
-    let mut cursor_transform = cursor_query.single_mut().unwrap();
+    let (camera, camera_transform) = camera.into_inner();
 
     if let Some(world_position) = window
         .cursor_position()

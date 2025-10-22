@@ -79,21 +79,11 @@ fn setup(
 }
 
 fn update_cursor_light(
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<Lighting2dSettings>>,
-    mut light_query: Query<&mut Transform, With<CursorLight>>,
+    window: Single<&Window, With<PrimaryWindow>>,
+    camera: Single<(&Camera, &GlobalTransform), With<Lighting2dSettings>>,
+    mut transform: Single<&mut Transform, With<CursorLight>>,
 ) {
-    let Ok((camera, camera_transform)) = camera_query.single() else {
-        return;
-    };
-
-    let Ok(window) = window_query.single() else {
-        return;
-    };
-
-    let Ok(mut transform) = light_query.single_mut() else {
-        return;
-    };
+    let (camera, camera_transform) = camera.into_inner();
 
     if let Some(world_position) = window
         .cursor_position()

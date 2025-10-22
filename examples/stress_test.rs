@@ -1,6 +1,6 @@
 use bevy::{
     color::palettes::tailwind::{GRAY_300, GRAY_800},
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
+    dev_tools::fps_overlay::FpsOverlayPlugin,
     prelude::*,
     window::PresentMode,
 };
@@ -18,12 +18,7 @@ fn main() {
                 ..default()
             }),
             Lighting2dPlugin,
-            FpsOverlayPlugin {
-                config: FpsOverlayConfig {
-                    enabled: true,
-                    ..default()
-                },
-            },
+            FpsOverlayPlugin::default(),
         ))
         .insert_resource(ClearColor(Color::from(GRAY_300)))
         .add_systems(Startup, setup)
