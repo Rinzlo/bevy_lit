@@ -1,10 +1,7 @@
 use bevy::{
-    asset::{embedded_asset, load_embedded_asset, AssetEventSystems},
+    asset::{embedded_asset, load_embedded_asset},
     core_pipeline::FullscreenShader,
-    ecs::{
-        component::Tick,
-        system::{lifetimeless::SRes, SystemChangeTick, SystemParamItem},
-    },
+    ecs::system::{lifetimeless::SRes, SystemChangeTick, SystemParamItem},
     math::FloatOrd,
     mesh::MeshVertexBufferLayoutRef,
     prelude::*,
@@ -32,12 +29,10 @@ use bevy::{
         Extract, Render, RenderApp, RenderStartup, RenderSystems,
     },
     sprite_render::{
-        init_mesh_2d_pipeline, DrawMesh2d, EntitiesNeedingSpecialization,
-        EntitySpecializationTicks, Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances,
-        SetMesh2dBindGroup, SetMesh2dViewBindGroup, SpecializedMaterial2dPipelineCache,
-        ViewKeyCache,
+        init_mesh_2d_pipeline, DrawMesh2d, EntitySpecializationTicks, Mesh2dPipeline,
+        Mesh2dPipelineKey, RenderMesh2dInstances, SetMesh2dBindGroup, SetMesh2dViewBindGroup,
+        SpecializedMaterial2dPipelineCache, ViewKeyCache,
     },
-    utils::Parallel,
 };
 
 use crate::{occlusion::LightOccluder2d, prelude::Lighting2dSettings, render::VoronoiPhase};
@@ -49,17 +44,7 @@ impl Plugin for Voronoi2dPlugin {
         embedded_asset!(app, "flood_seed.wgsl");
         embedded_asset!(app, "flood.wgsl");
 
-        app.add_plugins(ExtractComponentPlugin::<LightOccluder2d>::default())
-            .init_resource::<EntitiesNeedingSpecialization<Lighting2dSettings>>()
-            .init_resource::<EntitiesNeedingSpecialization<LightOccluder2d>>()
-            .add_systems(
-                PostUpdate,
-                (
-                    check_views_needing_specialization,
-                    check_materials_needing_specialization,
-                )
-                    .after(AssetEventSystems),
-            );
+        app.add_plugins(ExtractComponentPlugin::<LightOccluder2d>::default());
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -73,16 +58,8 @@ impl Plugin for Voronoi2dPlugin {
             .init_resource::<SpecializedMaterial2dPipelineCache<LightOccluder2d>>()
             .init_resource::<EntitySpecializationTicks<Lighting2dSettings>>()
             .init_resource::<EntitySpecializationTicks<LightOccluder2d>>()
-            .init_resource::<VoronoiViewSpecializationTicks>()
             .add_render_command::<VoronoiPhase, DrawMaskMesh>()
-            .add_systems(
-                ExtractSchedule,
-                (
-                    extract_entities_needs_specialization,
-                    extract_views_need_specialization,
-                    extract_voronoi_materials,
-                ),
-            )
+            .add_systems(ExtractSchedule, extract_voronoi_materials)
             .add_systems(
                 RenderStartup,
                 (
@@ -99,95 +76,6 @@ impl Plugin for Voronoi2dPlugin {
                     prepare_mask_material_bind_groups.in_set(RenderSystems::PrepareBindGroups),
                 ),
             );
-    }
-}
-
-pub fn check_views_needing_specialization(
-    needs_specialization: Query<
-        Entity,
-        (
-            Or<(
-                Changed<Camera>,
-                Changed<Lighting2dSettings>,
-                Changed<GlobalTransform>,
-            )>,
-            With<Lighting2dSettings>,
-        ),
-    >,
-    mut par_local: Local<Parallel<Vec<Entity>>>,
-    mut entities_needing_specialization: ResMut<EntitiesNeedingSpecialization<Lighting2dSettings>>,
-) {
-    entities_needing_specialization.clear();
-
-    needs_specialization
-        .par_iter()
-        .for_each(|entity| par_local.borrow_local_mut().push(entity));
-
-    par_local.drain_into(&mut entities_needing_specialization);
-}
-
-pub fn check_materials_needing_specialization(
-    needs_specialization: Query<
-        Entity,
-        (
-            Or<(
-                Changed<Mesh2d>,
-                AssetChanged<Mesh2d>,
-                Changed<LightOccluder2d>,
-                AssetChanged<LightOccluder2d>,
-                Changed<GlobalTransform>,
-            )>,
-            With<LightOccluder2d>,
-        ),
-    >,
-    mut par_local: Local<Parallel<Vec<Entity>>>,
-    mut entities_needing_specialization: ResMut<EntitiesNeedingSpecialization<LightOccluder2d>>,
-) {
-    entities_needing_specialization.clear();
-
-    needs_specialization
-        .par_iter()
-        .for_each(|entity| par_local.borrow_local_mut().push(entity));
-
-    par_local.drain_into(&mut entities_needing_specialization);
-}
-
-#[derive(Resource, Deref, DerefMut, Default)]
-pub struct VoronoiViewSpecializationTicks(MainEntityHashMap<Tick>);
-
-pub fn extract_views_need_specialization(
-    entities_needing_specialization: Extract<
-        Res<EntitiesNeedingSpecialization<Lighting2dSettings>>,
-    >,
-    mut view_specialization_ticks: ResMut<VoronoiViewSpecializationTicks>,
-    ticks: SystemChangeTick,
-) {
-    for entity in entities_needing_specialization.iter() {
-        view_specialization_ticks.insert((*entity).into(), ticks.this_run());
-    }
-}
-
-pub fn extract_entities_needs_specialization(
-    entities_needing_specialization: Extract<Res<EntitiesNeedingSpecialization<LightOccluder2d>>>,
-    mut entity_specialization_ticks: ResMut<EntitySpecializationTicks<LightOccluder2d>>,
-    mut removed_components: Extract<RemovedComponents<LightOccluder2d>>,
-    mut specialized_view_pipeline_cache: ResMut<
-        SpecializedMaterial2dPipelineCache<LightOccluder2d>,
-    >,
-    views: Query<&MainEntity, With<ExtractedView>>,
-    ticks: SystemChangeTick,
-) {
-    for entity in removed_components.read() {
-        entity_specialization_ticks.remove(&MainEntity::from(entity));
-        for view in views {
-            if let Some(cache) = specialized_view_pipeline_cache.get_mut(view) {
-                cache.remove(&MainEntity::from(entity));
-            }
-        }
-    }
-
-    for entity in entities_needing_specialization.iter() {
-        entity_specialization_ticks.insert((*entity).into(), ticks.this_run());
     }
 }
 
@@ -283,8 +171,6 @@ pub fn queue_mask_meshes(
     mut specialized_material_pipeline_cache: ResMut<
         SpecializedMaterial2dPipelineCache<LightOccluder2d>,
     >,
-    material_specialization_ticks: Res<EntitySpecializationTicks<LightOccluder2d>>,
-    view_specialization_ticks: Res<VoronoiViewSpecializationTicks>,
     ticks: SystemChangeTick,
 ) {
     if render_material_instances.is_empty() {
@@ -302,7 +188,7 @@ pub fn queue_mask_meshes(
 
         let draw_mask_mesh = mask_draw_functions.read().id::<DrawMaskMesh>();
 
-        let view_tick = view_specialization_ticks.get(view_entity).unwrap();
+        // let view_tick = view_specialization_ticks.get(view_entity).unwrap();
         let view_specialized_material_pipeline_cache = specialized_material_pipeline_cache
             .entry(*view_entity)
             .or_default();
@@ -310,21 +196,6 @@ pub fn queue_mask_meshes(
         for (render_entity, view_entity) in visible_entities.iter::<Mesh2d>() {
             if !render_material_instances.contains_key(view_entity) {
                 return;
-            }
-
-            let entity_tick = material_specialization_ticks.get(view_entity).unwrap();
-
-            let last_specialized_tick = view_specialized_material_pipeline_cache
-                .get(view_entity)
-                .map(|(tick, _)| *tick);
-
-            let needs_specialization = last_specialized_tick.is_none_or(|tick| {
-                view_tick.is_newer_than(tick, ticks.this_run())
-                    || entity_tick.is_newer_than(tick, ticks.this_run())
-            });
-
-            if !needs_specialization {
-                continue;
             }
 
             let Some(mesh_instance) = render_mesh_instances.get_mut(view_entity) else {
