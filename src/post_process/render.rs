@@ -197,13 +197,10 @@ pub struct ExtractedLighting2dSettings {
 pub fn extract_lighting2d_settings(
     mut commands: Commands,
     ambient_light_query: Extract<
-        Query<(RenderEntity, &Lighting2dSettings, Option<&AmbientLight2d>), With<Camera2d>>,
+        Query<(RenderEntity, &Lighting2dSettings, &AmbientLight2d), With<Camera2d>>,
     >,
 ) {
     for (e, settings, ambient_light) in &ambient_light_query {
-        let default_ambient_light = &AmbientLight2d::default();
-        let ambient_light = ambient_light.unwrap_or(default_ambient_light);
-
         commands.entity(e).insert(ExtractedLighting2dSettings {
             scale: settings.scale,
             ambient_light: ambient_light.color.to_linear() * ambient_light.intensity,
