@@ -21,7 +21,7 @@ impl Plugin for PointLight2dPlugin {
 }
 
 /// Represents a point light in a 2D environment
-#[derive(Component, Clone, Reflect, AsBindGroup)]
+#[derive(Component, Clone, Reflect, AsBindGroup, Debug)]
 #[require(SyncToRenderWorld, Transform, Visibility, VisibilityClass)]
 #[component(on_add = add_visibility_class::<Self>)]
 #[uniform(0, PointLight2dGpuType)]
