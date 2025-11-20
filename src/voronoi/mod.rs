@@ -40,7 +40,11 @@ use bevy::{
     utils::Parallel,
 };
 
-use crate::{occlusion::LightOccluder2d, prelude::Lighting2dSettings, render::VoronoiPhase};
+use crate::{
+    occlusion::LightOccluder2d,
+    prelude::Lighting2dSettings,
+    render::{extract_light2d_phases, VoronoiPhase},
+};
 
 pub struct Voronoi2dPlugin;
 impl Plugin for Voronoi2dPlugin {
@@ -81,7 +85,8 @@ impl Plugin for Voronoi2dPlugin {
                     extract_entities_needs_specialization,
                     extract_views_need_specialization,
                     extract_voronoi_materials,
-                ),
+                )
+                    .after(extract_light2d_phases),
             )
             .add_systems(
                 RenderStartup,
