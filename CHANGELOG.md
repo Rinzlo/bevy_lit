@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+
+### Fix
+
+- Fix compatibility with bevy 0.17.3
+
 ## 0.8.0
 
 ### Features
