@@ -17,6 +17,7 @@ bevy = { version = "0.17", default-features = false, features = [
   "bevy_sprite_render",
   "bevy_log",
   "png",
+  "x11",
 ] }
 bytemuck = "1.23.2"
 fixedbitset = "0.5.7"
