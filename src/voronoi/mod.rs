@@ -33,14 +33,18 @@ use bevy::{
     },
     sprite_render::{
         init_mesh_2d_pipeline, DrawMesh2d, EntitiesNeedingSpecialization,
-        EntitySpecializationTicks, Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances,
+        EntitySpecializationTickPair, Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances,
         SetMesh2dBindGroup, SetMesh2dViewBindGroup, SpecializedMaterial2dPipelineCache,
         ViewKeyCache,
     },
     utils::Parallel,
 };
 
-use crate::{occlusion::LightOccluder2d, prelude::Lighting2dSettings, render::VoronoiPhase};
+use crate::{
+    occlusion::LightOccluder2d,
+    prelude::Lighting2dSettings,
+    render::{extract_light2d_phases, VoronoiPhase},
+};
 
 pub struct Voronoi2dPlugin;
 impl Plugin for Voronoi2dPlugin {
@@ -71,8 +75,8 @@ impl Plugin for Voronoi2dPlugin {
             .init_resource::<MaskMaterialBindGroups>()
             .init_resource::<DrawFunctions<VoronoiPhase>>()
             .init_resource::<SpecializedMaterial2dPipelineCache<LightOccluder2d>>()
-            .init_resource::<EntitySpecializationTicks<Lighting2dSettings>>()
-            .init_resource::<EntitySpecializationTicks<LightOccluder2d>>()
+            .init_resource::<EntitySpecializationTickPair<Lighting2dSettings>>()
+            .init_resource::<EntitySpecializationTickPair<LightOccluder2d>>()
             .init_resource::<VoronoiViewSpecializationTicks>()
             .add_render_command::<VoronoiPhase, DrawMaskMesh>()
             .add_systems(
@@ -81,7 +85,8 @@ impl Plugin for Voronoi2dPlugin {
                     extract_entities_needs_specialization,
                     extract_views_need_specialization,
                     extract_voronoi_materials,
-                ),
+                )
+                    .after(extract_light2d_phases),
             )
             .add_systems(
                 RenderStartup,
@@ -169,7 +174,7 @@ pub fn extract_views_need_specialization(
 
 pub fn extract_entities_needs_specialization(
     entities_needing_specialization: Extract<Res<EntitiesNeedingSpecialization<LightOccluder2d>>>,
-    mut entity_specialization_ticks: ResMut<EntitySpecializationTicks<LightOccluder2d>>,
+    mut entity_specialization_ticks: ResMut<EntitySpecializationTickPair<LightOccluder2d>>,
     mut removed_components: Extract<RemovedComponents<LightOccluder2d>>,
     mut specialized_view_pipeline_cache: ResMut<
         SpecializedMaterial2dPipelineCache<LightOccluder2d>,
@@ -283,7 +288,7 @@ pub fn queue_mask_meshes(
     mut specialized_material_pipeline_cache: ResMut<
         SpecializedMaterial2dPipelineCache<LightOccluder2d>,
     >,
-    material_specialization_ticks: Res<EntitySpecializationTicks<LightOccluder2d>>,
+    material_specialization_ticks: Res<EntitySpecializationTickPair<LightOccluder2d>>,
     view_specialization_ticks: Res<VoronoiViewSpecializationTicks>,
     ticks: SystemChangeTick,
 ) {
