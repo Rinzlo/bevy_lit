@@ -78,6 +78,7 @@ impl Plugin for Voronoi2dPlugin {
             .init_resource::<EntitySpecializationTickPair<Lighting2dSettings>>()
             .init_resource::<EntitySpecializationTickPair<LightOccluder2d>>()
             .init_resource::<VoronoiViewSpecializationTicks>()
+            .init_resource::<ViewNeedsSpecializtion>()
             .add_render_command::<VoronoiPhase, DrawMaskMesh>()
             .add_systems(
                 ExtractSchedule,
@@ -279,6 +280,9 @@ pub fn init_mask_pipeline(
     });
 }
 
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct ViewNeedsSpecializtion(MainEntityHashMap<bool>);
+
 pub fn specialize_mask_meshes(
     render_meshes: Res<RenderAssets<RenderMesh>>,
     pipeline_cache: Res<PipelineCache>,
@@ -293,6 +297,7 @@ pub fn specialize_mask_meshes(
     >,
     material_specialization_ticks: Res<EntitySpecializationTickPair<LightOccluder2d>>,
     view_specialization_ticks: Res<VoronoiViewSpecializationTicks>,
+    mut view_needs_specialization: ResMut<ViewNeedsSpecializtion>,
     ticks: SystemChangeTick,
 ) {
     if render_material_instances.is_empty() {
@@ -327,6 +332,8 @@ pub fn specialize_mask_meshes(
                 view_tick.is_newer_than(tick, ticks.this_run())
                     || entity_tick.is_newer_than(tick, ticks.this_run())
             });
+
+            view_needs_specialization.insert(*view_entity, needs_specialization);
 
             if !needs_specialization {
                 continue;
@@ -369,6 +376,7 @@ pub fn queue_mask_meshes(
     mut specialized_material_pipeline_cache: ResMut<
         SpecializedMaterial2dPipelineCache<LightOccluder2d>,
     >,
+    view_needs_specialization: Res<ViewNeedsSpecializtion>,
 ) {
     if render_material_instances.is_empty() {
         return;
@@ -378,6 +386,12 @@ pub fn queue_mask_meshes(
         let Some(mask_phase) = mask_render_phase.get_mut(&view.retained_view_entity) else {
             continue;
         };
+
+        if let Some(needs_specialization) = view_needs_specialization.get(view_entity) {
+            if !needs_specialization {
+                continue;
+            }
+        }
 
         let draw_mask_mesh = mask_draw_functions.read().id::<DrawMaskMesh>();
 
