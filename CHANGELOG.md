@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+### Fix
+
+- Fix Voronoi pipeline caching
+
 ## 0.9.0
 
 ### Fix
