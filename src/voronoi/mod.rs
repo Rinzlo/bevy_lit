@@ -12,7 +12,7 @@ use bevy::{
         batching::no_gpu_preprocessing::batch_and_prepare_sorted_render_phase,
         extract_component::ExtractComponentPlugin,
         mesh::RenderMesh,
-        render_asset::RenderAssets,
+        render_asset::{prepare_assets, RenderAssets},
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
@@ -98,7 +98,12 @@ impl Plugin for Voronoi2dPlugin {
             .add_systems(
                 Render,
                 (
-                    queue_mask_meshes.in_set(RenderSystems::QueueMeshes),
+                    specialize_mask_meshes
+                        .in_set(RenderSystems::PrepareMeshes)
+                        .after(prepare_assets::<RenderMesh>),
+                    queue_mask_meshes
+                        .in_set(RenderSystems::QueueMeshes)
+                        .after(prepare_assets::<RenderMesh>),
                     batch_and_prepare_sorted_render_phase::<VoronoiPhase, Mesh2dPipeline>
                         .in_set(RenderSystems::PrepareResources),
                     prepare_mask_material_bind_groups.in_set(RenderSystems::PrepareBindGroups),
@@ -274,16 +279,14 @@ pub fn init_mask_pipeline(
     });
 }
 
-pub fn queue_mask_meshes(
-    mask_draw_functions: Res<DrawFunctions<VoronoiPhase>>,
+pub fn specialize_mask_meshes(
     render_meshes: Res<RenderAssets<RenderMesh>>,
     pipeline_cache: Res<PipelineCache>,
     mut render_mesh_instances: ResMut<RenderMesh2dInstances>,
-    mut mask_render_phase: ResMut<ViewSortedRenderPhases<VoronoiPhase>>,
     mut mask_pipelines: ResMut<SpecializedMeshPipelines<MaskPipeline>>,
     mask_pipeline: Res<MaskPipeline>,
     view_key_cache: Res<ViewKeyCache>,
-    views: Query<(&MainEntity, &ExtractedView, &RenderVisibleEntities)>,
+    views: Query<(&MainEntity, &RenderVisibleEntities)>,
     render_material_instances: Res<RenderVoronoiMaterials>,
     mut specialized_material_pipeline_cache: ResMut<
         SpecializedMaterial2dPipelineCache<LightOccluder2d>,
@@ -296,23 +299,20 @@ pub fn queue_mask_meshes(
         return;
     }
 
-    for (view_entity, view, visible_entities) in &views {
+    for (view_entity, visible_entities) in &views {
         let Some(view_key) = view_key_cache.get(view_entity) else {
             continue;
         };
 
-        let Some(mask_phase) = mask_render_phase.get_mut(&view.retained_view_entity) else {
+        let Some(view_tick) = view_specialization_ticks.get(view_entity) else {
             continue;
         };
 
-        let draw_mask_mesh = mask_draw_functions.read().id::<DrawMaskMesh>();
-
-        let view_tick = view_specialization_ticks.get(view_entity).unwrap();
         let view_specialized_material_pipeline_cache = specialized_material_pipeline_cache
             .entry(*view_entity)
             .or_default();
 
-        for (render_entity, view_entity) in visible_entities.iter::<Mesh2d>() {
+        for (_, view_entity) in visible_entities.iter::<Mesh2d>() {
             if !render_material_instances.contains_key(view_entity) {
                 return;
             }
@@ -355,10 +355,56 @@ pub fn queue_mask_meshes(
 
             view_specialized_material_pipeline_cache
                 .insert(*view_entity, (ticks.this_run(), pipeline_id));
+        }
+    }
+}
+
+pub fn queue_mask_meshes(
+    mask_draw_functions: Res<DrawFunctions<VoronoiPhase>>,
+    render_meshes: Res<RenderAssets<RenderMesh>>,
+    mut render_mesh_instances: ResMut<RenderMesh2dInstances>,
+    mut mask_render_phase: ResMut<ViewSortedRenderPhases<VoronoiPhase>>,
+    views: Query<(&MainEntity, &ExtractedView, &RenderVisibleEntities)>,
+    render_material_instances: Res<RenderVoronoiMaterials>,
+    mut specialized_material_pipeline_cache: ResMut<
+        SpecializedMaterial2dPipelineCache<LightOccluder2d>,
+    >,
+) {
+    if render_material_instances.is_empty() {
+        return;
+    }
+
+    for (view_entity, view, visible_entities) in &views {
+        let Some(mask_phase) = mask_render_phase.get_mut(&view.retained_view_entity) else {
+            continue;
+        };
+
+        let draw_mask_mesh = mask_draw_functions.read().id::<DrawMaskMesh>();
+
+        let view_specialized_material_pipeline_cache = specialized_material_pipeline_cache
+            .entry(*view_entity)
+            .or_default();
+
+        for (render_entity, view_entity) in visible_entities.iter::<Mesh2d>() {
+            if !render_material_instances.contains_key(view_entity) {
+                return;
+            }
+
+            let Some(mesh_instance) = render_mesh_instances.get_mut(view_entity) else {
+                continue;
+            };
+            let Some(mesh) = render_meshes.get(mesh_instance.mesh_asset_id) else {
+                continue;
+            };
+
+            let Some((_, pipeline_id)) = view_specialized_material_pipeline_cache.get(view_entity)
+            else {
+                continue;
+            };
 
             mask_phase.add(VoronoiPhase {
                 sort_key: FloatOrd(mesh_instance.transforms.world_from_local.translation.z),
-                pipeline: pipeline_id,
+                pipeline: *pipeline_id,
                 draw_function: draw_mask_mesh,
                 entity: (*render_entity, *view_entity),
                 batch_range: 0..1,
