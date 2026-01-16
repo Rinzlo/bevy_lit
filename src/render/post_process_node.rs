@@ -222,7 +222,7 @@ impl ViewNode for Light2dPostProcessDrawNode {
         let mut lighting_texture = world
             .resource::<LightingTextures>()
             .get(&view.retained_view_entity)
-            .expect(&format!(
+            .unwrap_or_else(|| panic!(
                 "Expected the lighting texture for view {:?} to exist",
                 view.retained_view_entity.main_entity.id()
             ))
@@ -230,7 +230,7 @@ impl ViewNode for Light2dPostProcessDrawNode {
         let voronoi_texture = world
             .resource::<VoronoiTextures>()
             .get(&view.retained_view_entity)
-            .expect(&format!(
+            .unwrap_or_else(|| panic!(
                 "Expected the voronoi texture for view {:?} to exist",
                 view.retained_view_entity.main_entity.id()
             ))

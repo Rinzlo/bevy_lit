@@ -40,10 +40,10 @@ use crate::{
 };
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
-pub enum Light2d {
-    VoronoiPass,
-    LightPass,
-    PostProcessPass,
+pub enum Light2dPass {
+    Voronoi,
+    Light,
+    PostProcess,
 }
 
 pub struct Light2dRenderPlugin;
@@ -68,19 +68,19 @@ impl Plugin for Light2dRenderPlugin {
                 Render,
                 prepare_lighting_textures.in_set(RenderSystems::PrepareBindGroups),
             )
-            .add_render_graph_node::<ViewNodeRunner<VoronoiDrawNode>>(Core2d, Light2d::VoronoiPass)
-            .add_render_graph_node::<ViewNodeRunner<Light2dDrawNode>>(Core2d, Light2d::LightPass)
+            .add_render_graph_node::<ViewNodeRunner<VoronoiDrawNode>>(Core2d, Light2dPass::Voronoi)
+            .add_render_graph_node::<ViewNodeRunner<Light2dDrawNode>>(Core2d, Light2dPass::Light)
             .add_render_graph_node::<ViewNodeRunner<Light2dPostProcessDrawNode>>(
                 Core2d,
-                Light2d::PostProcessPass,
+                Light2dPass::PostProcess,
             )
             .add_render_graph_edges(
                 Core2d,
                 (
-                    Light2d::VoronoiPass,
-                    Light2d::LightPass,
+                    Light2dPass::Voronoi,
+                    Light2dPass::Light,
                     Node2d::EndMainPass,
-                    Light2d::PostProcessPass,
+                    Light2dPass::PostProcess,
                     Node2d::EndMainPassPostProcessing,
                 ),
             );

@@ -183,7 +183,7 @@ impl ViewNode for VoronoiDrawNode {
         let mut voronoi_texture = world
             .resource::<VoronoiTextures>()
             .get(&view.retained_view_entity)
-            .expect(&format!(
+            .unwrap_or_else(|| panic!(
                 "Expected the voronoi texture for {:?} exist",
                 view.retained_view_entity.main_entity.id()
             ))

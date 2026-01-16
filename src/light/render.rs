@@ -566,7 +566,7 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetLight2dViewBindGroup<
     ) -> RenderCommandResult {
         pass.set_bind_group(
             I,
-            &light2d_view_bind_group,
+            light2d_view_bind_group,
             &[view_uniform.offset, light2d_settings_uniform_index.index()],
         );
         RenderCommandResult::Success

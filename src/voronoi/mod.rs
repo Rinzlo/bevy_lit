@@ -232,7 +232,7 @@ impl SpecializedMeshPipeline for MaskPipeline {
         key: Self::Key,
         layout: &MeshVertexBufferLayoutRef,
     ) -> Result<RenderPipelineDescriptor, SpecializedMeshPipelineError> {
-        let descriptor = self.mesh_pipeline.specialize(key, &layout)?;
+        let descriptor = self.mesh_pipeline.specialize(key, layout)?;
 
         let mut mesh_layout = descriptor.layout.clone();
         mesh_layout.push(self.material_layout_desc.clone());
@@ -471,7 +471,7 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetMaskMaterialBindGroup
         let Some(bind_group) = bind_groups.get(&item.main_entity()) else {
             return RenderCommandResult::Skip;
         };
-        pass.set_bind_group(I, &bind_group, &[]);
+        pass.set_bind_group(I, bind_group, &[]);
         RenderCommandResult::Success
     }
 }

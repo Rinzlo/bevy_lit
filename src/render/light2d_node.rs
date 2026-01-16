@@ -41,7 +41,7 @@ impl ViewNode for Light2dDrawNode {
         let Some(mut lighting_texture) = world
             .resource::<LightingTextures>()
             .get(&view.retained_view_entity)
-            .map(|t| t.clone())
+            .cloned()
         else {
             return Ok(());
         };
