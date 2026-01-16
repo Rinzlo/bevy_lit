@@ -56,7 +56,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         intensity: 3.0,
         outer_radius: 200.0,
         falloff: 2.0,
-        ..default(),
+        ..default()
     });
 
     commands.spawn((
