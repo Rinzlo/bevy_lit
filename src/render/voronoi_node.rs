@@ -57,6 +57,8 @@ pub fn run_flood_seed_pass<'w>(
 ) {
     let flood_pipeline = world.resource::<FloodPipeline>();
 
+    let pipeline_cache = world.resource::<PipelineCache>();
+
     let Some(pipeline) = world
         .resource::<PipelineCache>()
         .get_render_pipeline(flood_pipeline.seed_pipeline)
@@ -70,7 +72,7 @@ pub fn run_flood_seed_pass<'w>(
 
     let bind_group = render_context.render_device().create_bind_group(
         "flood_seed_bind_group",
-        &flood_pipeline.seed_layout,
+        &pipeline_cache.get_bind_group_layout(&flood_pipeline.seed_layout_desc),
         &BindGroupEntries::sequential((&voronoi_texture.input().default_view, &sampler)),
     );
 
@@ -105,6 +107,8 @@ pub fn run_flood_pass<'w>(
 ) {
     let flood_pipeline = world.resource::<FloodPipeline>();
 
+    let pipeline_cache = world.resource::<PipelineCache>();
+
     let mut step = UniformBuffer::from(step);
 
     step.write_buffer(
@@ -113,9 +117,7 @@ pub fn run_flood_pass<'w>(
     );
 
     let (Some(pipeline), Some(step)) = (
-        world
-            .resource::<PipelineCache>()
-            .get_render_pipeline(flood_pipeline.pipeline),
+        pipeline_cache.get_render_pipeline(flood_pipeline.pipeline),
         step.binding(),
     ) else {
         return;
@@ -127,7 +129,7 @@ pub fn run_flood_pass<'w>(
 
     let bind_group = render_context.render_device().create_bind_group(
         "flood_bind_group",
-        &flood_pipeline.layout,
+        &pipeline_cache.get_bind_group_layout(&flood_pipeline.layout_desc),
         &BindGroupEntries::sequential((&voronoi_texture.input().default_view, &sampler, step)),
     );
 

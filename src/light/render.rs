@@ -27,7 +27,7 @@ use bevy::{
         },
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            AsBindGroup, BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutDescriptor,
+            AsBindGroup, BindGroup, BindGroupEntries, BindGroupLayoutDescriptor,
             BindGroupLayoutEntries, BlendComponent, BlendFactor, BlendOperation, BlendState,
             BufferUsages, ColorTargetState, ColorWrites, FragmentState, IndexFormat, PipelineCache,
             PreparedBindGroup, RawBufferVec, RenderPipelineDescriptor, SamplerBindingType,
@@ -186,7 +186,6 @@ pub fn calculate_bounds_2d<L: Light2dMaterial>(
 pub struct Light2dPipeline<L: Light2dMaterial> {
     vertex_shader: Handle<Shader>,
     fragment_shader: Handle<Shader>,
-    view_layout: BindGroupLayout,
     view_layout_desc: BindGroupLayoutDescriptor,
     light_layout_desc: BindGroupLayoutDescriptor,
     marker: PhantomData<L>,
@@ -197,26 +196,25 @@ pub fn init_light2d_pipeline<L: Light2dMaterial>(
     render_device: Res<RenderDevice>,
     asset_server: Res<AssetServer>,
 ) {
-    let view_layout_label = "light2d_view_layout";
-    let view_layout_entries = BindGroupLayoutEntries::sequential(
-        ShaderStages::VERTEX_FRAGMENT,
-        (
-            uniform_buffer::<ViewUniform>(true),
-            uniform_buffer::<ExtractedLighting2dSettings>(true).visibility(ShaderStages::FRAGMENT),
-            texture_2d(TextureSampleType::Float { filterable: true })
-                .visibility(ShaderStages::FRAGMENT),
-            sampler(SamplerBindingType::Filtering).visibility(ShaderStages::FRAGMENT),
-        ),
-    );
     commands.insert_resource(Light2dPipeline::<L> {
         vertex_shader: load_embedded_asset!(asset_server.as_ref(), "light_vertex.wgsl"),
         fragment_shader: match L::fragment_shader() {
             Light2dShaderRef::Handle(handle) => handle,
             Light2dShaderRef::Path(path) => asset_server.load(path),
         },
-        view_layout: render_device
-            .create_bind_group_layout(view_layout_label, &view_layout_entries),
-        view_layout_desc: BindGroupLayoutDescriptor::new(view_layout_label, &view_layout_entries),
+        view_layout_desc: BindGroupLayoutDescriptor::new(
+            "light2d_view_layout",
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::VERTEX_FRAGMENT,
+                (
+                    uniform_buffer::<ViewUniform>(true),
+                    uniform_buffer::<ExtractedLighting2dSettings>(true).visibility(ShaderStages::FRAGMENT),
+                    texture_2d(TextureSampleType::Float { filterable: true })
+                        .visibility(ShaderStages::FRAGMENT),
+                    sampler(SamplerBindingType::Filtering).visibility(ShaderStages::FRAGMENT),
+                ),
+            ),
+        ),
         light_layout_desc: L::bind_group_layout_descriptor(&render_device),
         marker: PhantomData,
     });
@@ -371,6 +369,7 @@ pub struct Light2dViewBindGroup(pub BindGroup);
 pub fn prepare_light2d_view_bind_groups<L: Light2dMaterial>(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
+    pipeline_cache: Res<PipelineCache>,
     light2d_pipeline: Res<Light2dPipeline<L>>,
     view_uniforms: Res<ViewUniforms>,
     voronoi_textures: Res<VoronoiTextures>,
@@ -393,7 +392,7 @@ pub fn prepare_light2d_view_bind_groups<L: Light2dMaterial>(
 
         let view_bind_group = render_device.create_bind_group(
             "light2d_view_bind_group",
-            &light2d_pipeline.view_layout,
+            &pipeline_cache.get_bind_group_layout(&light2d_pipeline.view_layout_desc),
             &BindGroupEntries::sequential((
                 view_binding.clone(),
                 lighting_settings_binding.clone(),
