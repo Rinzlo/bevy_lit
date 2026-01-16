@@ -19,11 +19,11 @@ use bevy::{
         },
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
-            CachedRenderPipelineId, ColorTargetState, ColorWrites, FragmentState, PipelineCache,
-            RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
-            SpecializedMeshPipeline, SpecializedMeshPipelineError, SpecializedMeshPipelines,
-            TextureFormat, TextureSampleType,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutDescriptor,
+            BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState, ColorWrites,
+            FragmentState, PipelineCache, RenderPipelineDescriptor, SamplerBindingType,
+            SamplerDescriptor, ShaderStages, SpecializedMeshPipeline, SpecializedMeshPipelineError,
+            SpecializedMeshPipelines, TextureFormat, TextureSampleType,
         },
         renderer::RenderDevice,
         sync_world::{MainEntity, MainEntityHashMap},
@@ -275,14 +275,12 @@ pub fn init_mask_pipeline(
     commands.insert_resource(MaskPipeline {
         mesh_pipeline: mesh_2d_pipeline.clone(),
         shader: load_embedded_asset!(asset_server.as_ref(), "mask.wgsl"),
-        material_layout: render_device.create_bind_group_layout(
+        material_layout: render_device
+            .create_bind_group_layout(material_layout_label, &material_layout_entries),
+        material_layout_desc: BindGroupLayoutDescriptor::new(
             material_layout_label,
             &material_layout_entries,
         ),
-        material_layout_desc: BindGroupLayoutDescriptor::new(
-            material_layout_label,
-            &material_layout_entries
-        )
     });
 }
 
@@ -506,14 +504,9 @@ pub fn init_flood_pipeline(
             sampler(SamplerBindingType::Filtering),
         ),
     );
-    let seed_layout = render_device.create_bind_group_layout(
-        seed_layout_label,
-        &seed_layout_entries,
-    );
-    let seed_layout_desc = BindGroupLayoutDescriptor::new(
-        seed_layout_label,
-        &seed_layout_entries,
-    );
+    let seed_layout =
+        render_device.create_bind_group_layout(seed_layout_label, &seed_layout_entries);
+    let seed_layout_desc = BindGroupLayoutDescriptor::new(seed_layout_label, &seed_layout_entries);
 
     let fullscreen_vertex_state = fullscreen_shader.to_vertex_state();
 
@@ -543,14 +536,8 @@ pub fn init_flood_pipeline(
             uniform_buffer::<UVec2>(false),
         ),
     );
-    let layout = render_device.create_bind_group_layout(
-        layout_label,
-        &layout_entries,
-    );
-    let layout_desc = BindGroupLayoutDescriptor::new(
-        layout_label,
-        &layout_entries
-    );
+    let layout = render_device.create_bind_group_layout(layout_label, &layout_entries);
+    let layout_desc = BindGroupLayoutDescriptor::new(layout_label, &layout_entries);
 
     let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
         label: Some("flood_pipeline".into()),

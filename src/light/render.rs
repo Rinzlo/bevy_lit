@@ -27,9 +27,9 @@ use bevy::{
         },
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            AsBindGroup, BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
-            BlendComponent, BlendFactor, BlendOperation, BlendState, BufferUsages,
-            ColorTargetState, ColorWrites, FragmentState, IndexFormat, PipelineCache,
+            AsBindGroup, BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutDescriptor,
+            BindGroupLayoutEntries, BlendComponent, BlendFactor, BlendOperation, BlendState,
+            BufferUsages, ColorTargetState, ColorWrites, FragmentState, IndexFormat, PipelineCache,
             PreparedBindGroup, RawBufferVec, RenderPipelineDescriptor, SamplerBindingType,
             SamplerDescriptor, ShaderStages, SpecializedRenderPipeline, SpecializedRenderPipelines,
             TextureFormat, TextureSampleType, VertexState, VertexStepMode,
@@ -202,8 +202,7 @@ pub fn init_light2d_pipeline<L: Light2dMaterial>(
         ShaderStages::VERTEX_FRAGMENT,
         (
             uniform_buffer::<ViewUniform>(true),
-            uniform_buffer::<ExtractedLighting2dSettings>(true)
-                .visibility(ShaderStages::FRAGMENT),
+            uniform_buffer::<ExtractedLighting2dSettings>(true).visibility(ShaderStages::FRAGMENT),
             texture_2d(TextureSampleType::Float { filterable: true })
                 .visibility(ShaderStages::FRAGMENT),
             sampler(SamplerBindingType::Filtering).visibility(ShaderStages::FRAGMENT),
@@ -215,14 +214,9 @@ pub fn init_light2d_pipeline<L: Light2dMaterial>(
             Light2dShaderRef::Handle(handle) => handle,
             Light2dShaderRef::Path(path) => asset_server.load(path),
         },
-        view_layout: render_device.create_bind_group_layout(
-            view_layout_label,
-            &view_layout_entries,
-        ),
-        view_layout_desc: BindGroupLayoutDescriptor::new(
-            view_layout_label,
-            &view_layout_entries
-        ),
+        view_layout: render_device
+            .create_bind_group_layout(view_layout_label, &view_layout_entries),
+        view_layout_desc: BindGroupLayoutDescriptor::new(view_layout_label, &view_layout_entries),
         light_layout_desc: L::bind_group_layout_descriptor(&render_device),
         marker: PhantomData,
     });
@@ -239,7 +233,10 @@ impl<L: Light2dMaterial> SpecializedRenderPipeline for Light2dPipeline<L> {
     fn specialize(&self, _key: Self::Key) -> RenderPipelineDescriptor {
         RenderPipelineDescriptor {
             label: Some("light2d_pipeline".into()),
-            layout: vec![self.view_layout_desc.clone(), self.light_layout_desc.clone()],
+            layout: vec![
+                self.view_layout_desc.clone(),
+                self.light_layout_desc.clone(),
+            ],
             vertex: VertexState {
                 shader: self.vertex_shader.clone(),
                 shader_defs: vec![],

@@ -5,10 +5,11 @@ use bevy::{
     render::{
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries, BindGroupLayoutEntry, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, FragmentState, PipelineCache, RenderPipelineDescriptor,
-            SamplerBindingType, ShaderStages, ShaderType, SpecializedRenderPipeline,
-            SpecializedRenderPipelines, TextureFormat, TextureSampleType,
+            BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
+            BindGroupLayoutEntry, CachedRenderPipelineId, ColorTargetState, ColorWrites,
+            FragmentState, PipelineCache, RenderPipelineDescriptor, SamplerBindingType,
+            ShaderStages, ShaderType, SpecializedRenderPipeline, SpecializedRenderPipelines,
+            TextureFormat, TextureSampleType,
         },
         renderer::RenderDevice,
         sync_world::RenderEntity,
@@ -37,8 +38,8 @@ fn create_post_process_pipeline(
     entries: &[BindGroupLayoutEntry],
 ) -> (BindGroupLayout, CachedRenderPipelineId) {
     let layout_label = String::from(label) + "_bind_group_layout";
-    let layout = render_device.create_bind_group_layout(&layout_label as &str, entries,);
-    let layout_desc = BindGroupLayoutDescriptor::new(layout_label, entries,);
+    let layout = render_device.create_bind_group_layout(&layout_label as &str, entries);
+    let layout_desc = BindGroupLayoutDescriptor::new(layout_label, entries);
 
     let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
         label: Some((String::from(label) + "_pipeline").into()),
@@ -140,14 +141,8 @@ pub fn init_lighting2d_composite_pipeline(
     commands.insert_resource(Lighting2dCompositePipeline {
         shader: load_embedded_asset!(asset_server.as_ref(), "composite.wgsl"),
         fullscreen_shader: fullscreen_shader.clone(),
-        layout: render_device.create_bind_group_layout(
-            layout_label,
-            &layout_entries,
-        ),
-        layout_desc : BindGroupLayoutDescriptor::new(
-            layout_label,
-            &layout_entries,
-        )
+        layout: render_device.create_bind_group_layout(layout_label, &layout_entries),
+        layout_desc: BindGroupLayoutDescriptor::new(layout_label, &layout_entries),
     });
 }
 
