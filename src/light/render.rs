@@ -208,7 +208,8 @@ pub fn init_light2d_pipeline<L: Light2dMaterial>(
                 ShaderStages::VERTEX_FRAGMENT,
                 (
                     uniform_buffer::<ViewUniform>(true),
-                    uniform_buffer::<ExtractedLighting2dSettings>(true).visibility(ShaderStages::FRAGMENT),
+                    uniform_buffer::<ExtractedLighting2dSettings>(true)
+                        .visibility(ShaderStages::FRAGMENT),
                     texture_2d(TextureSampleType::Float { filterable: true })
                         .visibility(ShaderStages::FRAGMENT),
                     sampler(SamplerBindingType::Filtering).visibility(ShaderStages::FRAGMENT),

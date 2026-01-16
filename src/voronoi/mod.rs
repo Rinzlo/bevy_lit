@@ -19,11 +19,11 @@ use bevy::{
         },
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroup, BindGroupEntries, BindGroupLayoutDescriptor,
-            BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState, ColorWrites,
-            FragmentState, PipelineCache, RenderPipelineDescriptor, SamplerBindingType,
-            SamplerDescriptor, ShaderStages, SpecializedMeshPipeline, SpecializedMeshPipelineError,
-            SpecializedMeshPipelines, TextureFormat, TextureSampleType,
+            BindGroup, BindGroupEntries, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
+            CachedRenderPipelineId, ColorTargetState, ColorWrites, FragmentState, PipelineCache,
+            RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
+            SpecializedMeshPipeline, SpecializedMeshPipelineError, SpecializedMeshPipelines,
+            TextureFormat, TextureSampleType,
         },
         renderer::RenderDevice,
         sync_world::{MainEntity, MainEntityHashMap},
@@ -498,7 +498,7 @@ pub fn init_flood_pipeline(
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 sampler(SamplerBindingType::Filtering),
             ),
-        )
+        ),
     );
 
     let fullscreen_vertex_state = fullscreen_shader.to_vertex_state();
@@ -529,7 +529,7 @@ pub fn init_flood_pipeline(
                 sampler(SamplerBindingType::Filtering),
                 uniform_buffer::<UVec2>(false),
             ),
-        )
+        ),
     );
 
     let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {

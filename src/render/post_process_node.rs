@@ -166,7 +166,8 @@ pub fn run_composite_pass<'w>(
 
     let bind_group = render_context.render_device().create_bind_group(
         "composite_bind_group",
-        &pipeline_cache.get_bind_group_layout(&world.resource::<Lighting2dCompositePipeline>().layout_desc),
+        &pipeline_cache
+            .get_bind_group_layout(&world.resource::<Lighting2dCompositePipeline>().layout_desc),
         &BindGroupEntries::sequential((
             lighting_settings_uniforms,
             post_process.source,
@@ -222,18 +223,22 @@ impl ViewNode for Light2dPostProcessDrawNode {
         let mut lighting_texture = world
             .resource::<LightingTextures>()
             .get(&view.retained_view_entity)
-            .unwrap_or_else(|| panic!(
-                "Expected the lighting texture for view {:?} to exist",
-                view.retained_view_entity.main_entity.id()
-            ))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Expected the lighting texture for view {:?} to exist",
+                    view.retained_view_entity.main_entity.id()
+                )
+            })
             .clone();
         let voronoi_texture = world
             .resource::<VoronoiTextures>()
             .get(&view.retained_view_entity)
-            .unwrap_or_else(|| panic!(
-                "Expected the voronoi texture for view {:?} to exist",
-                view.retained_view_entity.main_entity.id()
-            ))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Expected the voronoi texture for view {:?} to exist",
+                    view.retained_view_entity.main_entity.id()
+                )
+            })
             .clone();
 
         if should_run_penetration_pass(&lighting_settings.penetration) {

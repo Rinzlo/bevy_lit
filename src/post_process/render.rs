@@ -5,11 +5,11 @@ use bevy::{
     render::{
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroupLayoutDescriptor, BindGroupLayoutEntries,
-            BindGroupLayoutEntry, CachedRenderPipelineId, ColorTargetState, ColorWrites,
-            FragmentState, PipelineCache, RenderPipelineDescriptor, SamplerBindingType,
-            ShaderStages, ShaderType, SpecializedRenderPipeline, SpecializedRenderPipelines,
-            TextureFormat, TextureSampleType,
+            BindGroupLayoutDescriptor, BindGroupLayoutEntries, BindGroupLayoutEntry,
+            CachedRenderPipelineId, ColorTargetState, ColorWrites, FragmentState, PipelineCache,
+            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, ShaderType,
+            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat,
+            TextureSampleType,
         },
         sync_world::RenderEntity,
         view::{ExtractedView, ViewTarget, ViewUniform},
@@ -35,7 +35,8 @@ fn create_post_process_pipeline(
     shader: Handle<Shader>,
     entries: &[BindGroupLayoutEntry],
 ) -> (BindGroupLayoutDescriptor, CachedRenderPipelineId) {
-    let layout_desc = BindGroupLayoutDescriptor::new(String::from(label) + "_bind_group_layout", entries);
+    let layout_desc =
+        BindGroupLayoutDescriptor::new(String::from(label) + "_bind_group_layout", entries);
 
     let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
         label: Some((String::from(label) + "_pipeline").into()),
