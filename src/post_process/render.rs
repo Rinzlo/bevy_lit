@@ -5,7 +5,7 @@ use bevy::{
     render::{
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, CachedRenderPipelineId,
+            BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries, BindGroupLayoutEntry, CachedRenderPipelineId,
             ColorTargetState, ColorWrites, FragmentState, PipelineCache, RenderPipelineDescriptor,
             SamplerBindingType, ShaderStages, ShaderType, SpecializedRenderPipeline,
             SpecializedRenderPipelines, TextureFormat, TextureSampleType,
@@ -36,14 +36,13 @@ fn create_post_process_pipeline(
     shader: Handle<Shader>,
     entries: &[BindGroupLayoutEntry],
 ) -> (BindGroupLayout, CachedRenderPipelineId) {
-    let layout = render_device.create_bind_group_layout(
-        &(String::from(label) + "_bind_group_layout") as &str,
-        entries,
-    );
+    let layout_label = String::from(label) + "_bind_group_layout";
+    let layout = render_device.create_bind_group_layout(&layout_label as &str, entries,);
+    let layout_desc = BindGroupLayoutDescriptor::new(layout_label, entries,);
 
     let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
         label: Some((String::from(label) + "_pipeline").into()),
-        layout: vec![layout.clone()],
+        layout: vec![layout_desc],
         vertex: fullscreen_shader.to_vertex_state(),
         fragment: Some(FragmentState {
             shader,
@@ -117,6 +116,7 @@ pub fn init_post_process_pipelines(
 #[derive(Resource)]
 pub struct Lighting2dCompositePipeline {
     pub layout: BindGroupLayout,
+    pub layout_desc: BindGroupLayoutDescriptor,
     pub shader: Handle<Shader>,
     pub fullscreen_shader: FullscreenShader,
 }
@@ -127,21 +127,27 @@ pub fn init_lighting2d_composite_pipeline(
     asset_server: Res<AssetServer>,
     fullscreen_shader: Res<FullscreenShader>,
 ) {
+    let layout_label = "composite_bind_group_layout";
+    let layout_entries = BindGroupLayoutEntries::sequential(
+        ShaderStages::FRAGMENT,
+        (
+            uniform_buffer::<ExtractedLighting2dSettings>(true),
+            texture_2d(TextureSampleType::Float { filterable: true }),
+            texture_2d(TextureSampleType::Float { filterable: true }),
+            sampler(SamplerBindingType::Filtering),
+        ),
+    );
     commands.insert_resource(Lighting2dCompositePipeline {
         shader: load_embedded_asset!(asset_server.as_ref(), "composite.wgsl"),
         fullscreen_shader: fullscreen_shader.clone(),
         layout: render_device.create_bind_group_layout(
-            "composite_bind_group_layout",
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    uniform_buffer::<ExtractedLighting2dSettings>(true),
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                ),
-            ),
+            layout_label,
+            &layout_entries,
         ),
+        layout_desc : BindGroupLayoutDescriptor::new(
+            layout_label,
+            &layout_entries,
+        )
     });
 }
 
@@ -157,7 +163,7 @@ impl SpecializedRenderPipeline for Lighting2dCompositePipeline {
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
         RenderPipelineDescriptor {
             label: Some("composite_pipeline".into()),
-            layout: vec![self.layout.clone()],
+            layout: vec![self.layout_desc.clone()],
             vertex: self.fullscreen_shader.to_vertex_state(),
             fragment: Some(FragmentState {
                 shader: self.shader.clone(),
@@ -184,7 +190,7 @@ impl SpecializedRenderPipeline for Lighting2dCompositePipeline {
 
 #[derive(Component, Clone, ShaderType)]
 pub struct ExtractedLighting2dSettings {
-    #[size(16)]
+    #[shader(size(16))]
     pub raymarch: RaymarchSettings,
     pub penetration: PenetrationSettings,
     pub ambient_light: LinearRgba,

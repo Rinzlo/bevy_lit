@@ -2,7 +2,7 @@ use bevy::{
     asset::{embedded_asset, load_embedded_asset, AssetEventSystems},
     core_pipeline::FullscreenShader,
     ecs::{
-        component::Tick,
+        change_detection::Tick,
         system::{lifetimeless::SRes, SystemChangeTick, SystemParamItem},
     },
     math::FloatOrd,
@@ -19,7 +19,7 @@ use bevy::{
         },
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
             CachedRenderPipelineId, ColorTargetState, ColorWrites, FragmentState, PipelineCache,
             RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
             SpecializedMeshPipeline, SpecializedMeshPipelineError, SpecializedMeshPipelines,
@@ -221,6 +221,7 @@ fn extract_voronoi_materials(
 pub struct MaskPipeline {
     pub mesh_pipeline: Mesh2dPipeline,
     pub material_layout: BindGroupLayout,
+    pub material_layout_desc: BindGroupLayoutDescriptor,
     pub shader: Handle<Shader>,
 }
 
@@ -235,7 +236,7 @@ impl SpecializedMeshPipeline for MaskPipeline {
         let descriptor = self.mesh_pipeline.specialize(key, &layout)?;
 
         let mut mesh_layout = descriptor.layout.clone();
-        mesh_layout.push(self.material_layout.clone());
+        mesh_layout.push(self.material_layout_desc.clone());
 
         Ok(RenderPipelineDescriptor {
             label: Some("mask_pipeline".into()),
@@ -263,19 +264,25 @@ pub fn init_mask_pipeline(
     mesh_2d_pipeline: Res<Mesh2dPipeline>,
     asset_server: Res<AssetServer>,
 ) {
+    let material_layout_label = "mask_material_bind_group_layout";
+    let material_layout_entries = BindGroupLayoutEntries::sequential(
+        ShaderStages::FRAGMENT,
+        (
+            texture_2d(TextureSampleType::Float { filterable: true }),
+            sampler(SamplerBindingType::Filtering),
+        ),
+    );
     commands.insert_resource(MaskPipeline {
         mesh_pipeline: mesh_2d_pipeline.clone(),
         shader: load_embedded_asset!(asset_server.as_ref(), "mask.wgsl"),
         material_layout: render_device.create_bind_group_layout(
-            "mask_material_bind_group_layout",
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                ),
-            ),
+            material_layout_label,
+            &material_layout_entries,
         ),
+        material_layout_desc: BindGroupLayoutDescriptor::new(
+            material_layout_label,
+            &material_layout_entries
+        )
     });
 }
 
@@ -491,22 +498,28 @@ pub fn init_flood_pipeline(
     pipeline_cache: Res<PipelineCache>,
     asset_server: Res<AssetServer>,
 ) {
-    let seed_layout = render_device.create_bind_group_layout(
-        "flood_seed_bind_group_layout",
-        &BindGroupLayoutEntries::sequential(
-            ShaderStages::FRAGMENT,
-            (
-                texture_2d(TextureSampleType::Float { filterable: true }),
-                sampler(SamplerBindingType::Filtering),
-            ),
+    let seed_layout_label = "flood_seed_bind_group_layout";
+    let seed_layout_entries = BindGroupLayoutEntries::sequential(
+        ShaderStages::FRAGMENT,
+        (
+            texture_2d(TextureSampleType::Float { filterable: true }),
+            sampler(SamplerBindingType::Filtering),
         ),
+    );
+    let seed_layout = render_device.create_bind_group_layout(
+        seed_layout_label,
+        &seed_layout_entries,
+    );
+    let seed_layout_desc = BindGroupLayoutDescriptor::new(
+        seed_layout_label,
+        &seed_layout_entries,
     );
 
     let fullscreen_vertex_state = fullscreen_shader.to_vertex_state();
 
     let seed_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
         label: Some("flood_seed_pipeline".into()),
-        layout: vec![seed_layout.clone()],
+        layout: vec![seed_layout_desc],
         vertex: fullscreen_vertex_state.clone(),
         fragment: Some(FragmentState {
             shader: load_embedded_asset!(asset_server.as_ref(), "flood_seed.wgsl"),
@@ -521,21 +534,27 @@ pub fn init_flood_pipeline(
         ..default()
     });
 
-    let layout = render_device.create_bind_group_layout(
-        "flood_bind_group_layout",
-        &BindGroupLayoutEntries::sequential(
-            ShaderStages::FRAGMENT,
-            (
-                texture_2d(TextureSampleType::Float { filterable: true }),
-                sampler(SamplerBindingType::Filtering),
-                uniform_buffer::<UVec2>(false),
-            ),
+    let layout_label = "flood_bind_group_layout";
+    let layout_entries = BindGroupLayoutEntries::sequential(
+        ShaderStages::FRAGMENT,
+        (
+            texture_2d(TextureSampleType::Float { filterable: true }),
+            sampler(SamplerBindingType::Filtering),
+            uniform_buffer::<UVec2>(false),
         ),
+    );
+    let layout = render_device.create_bind_group_layout(
+        layout_label,
+        &layout_entries,
+    );
+    let layout_desc = BindGroupLayoutDescriptor::new(
+        layout_label,
+        &layout_entries
     );
 
     let pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
         label: Some("flood_pipeline".into()),
-        layout: vec![layout.clone()],
+        layout: vec![layout_desc],
         vertex: fullscreen_vertex_state,
         fragment: Some(FragmentState {
             shader: load_embedded_asset!(asset_server.as_ref(), "flood.wgsl"),
