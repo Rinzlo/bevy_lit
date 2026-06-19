@@ -19,6 +19,7 @@ pub mod prelude {
     };
     pub use crate::occlusion::LightOccluder2d;
     pub use crate::plugin::Lighting2dPlugin;
+    pub use crate::render::Light2dPass;
     pub use crate::settings::{
         AmbientLight2d, Lighting2dSettings, PenetrationSettings, RaymarchSettings,
     };

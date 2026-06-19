@@ -39,10 +39,14 @@ use crate::{
     settings::Lighting2dSettings,
 };
 
+/// Render graph labels for 2D lighting passes.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
 pub enum Light2dPass {
+    /// Voronoi distance field pass.
     Voronoi,
+    /// Light accumulation pass.
     Light,
+    /// Final compositing pass.
     PostProcess,
 }
 

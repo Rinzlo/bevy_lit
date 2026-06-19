@@ -313,10 +313,12 @@ pub fn specialize_mask_meshes(
 
         for (_, view_entity) in visible_entities.iter::<Mesh2d>() {
             if !render_material_instances.contains_key(view_entity) {
-                return;
+                continue;
             }
 
-            let entity_tick = material_specialization_ticks.get(view_entity).unwrap();
+            let Some(entity_tick) = material_specialization_ticks.get(view_entity) else {
+                continue;
+            };
 
             let last_specialized_tick = view_specialized_material_pipeline_cache
                 .get(view_entity)
@@ -386,7 +388,7 @@ pub fn queue_mask_meshes(
 
         for (render_entity, view_entity) in visible_entities.iter::<Mesh2d>() {
             if !render_material_instances.contains_key(view_entity) {
-                return;
+                continue;
             }
 
             let Some(mesh_instance) = render_mesh_instances.get_mut(view_entity) else {

@@ -193,9 +193,10 @@ pub fn extract_lighting2d_settings(
     >,
 ) {
     for (e, settings, ambient_light) in &ambient_light_query {
+        let linear = ambient_light.color.to_linear() * ambient_light.intensity;
         commands.entity(e).insert(ExtractedLighting2dSettings {
             scale: settings.scale,
-            ambient_light: ambient_light.color.to_linear() * ambient_light.intensity,
+            ambient_light: linear,
             raymarch: settings.raymarch.clone(),
             penetration: settings.penetration.clone(),
             tint_occluders: if settings.tint_occluders { 1 } else { 0 },

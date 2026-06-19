@@ -6,8 +6,8 @@ use bevy::{
         render_graph::{NodeRunError, RenderGraphContext, ViewNode},
         render_phase::{SortedRenderPhase, ViewSortedRenderPhases},
         render_resource::{
-            BindGroupEntries, Operations, PipelineCache, RenderPassColorAttachment,
-            RenderPassDescriptor, SamplerDescriptor, UniformBuffer,
+            BindGroupEntries, LoadOp, Operations, PipelineCache, RenderPassColorAttachment,
+            RenderPassDescriptor, SamplerDescriptor, StoreOp, UniformBuffer,
         },
         renderer::{RenderContext, RenderQueue},
         view::{ExtractedView, ViewTarget},
@@ -32,7 +32,10 @@ pub fn run_mask_pass<'w>(
         color_attachments: &[Some(RenderPassColorAttachment {
             view: &voronoi_texture.output().default_view,
             resolve_target: None,
-            ops: Operations::default(),
+            ops: Operations {
+                load: LoadOp::Clear(LinearRgba::NONE.into()),
+                store: StoreOp::Store,
+            },
             depth_slice: None,
         })],
         ..default()
@@ -177,6 +180,27 @@ impl ViewNode for VoronoiDrawNode {
         };
 
         if mask_phase.items.is_empty() {
+            // Clear the voronoi texture so stale occlusion data doesn't persist
+            // after all occluders are removed (e.g., wall undo).
+            let voronoi_texture = world
+                .resource::<VoronoiTextures>()
+                .get(&view.retained_view_entity);
+            if let Some(voronoi_texture) = voronoi_texture {
+                // Light pass reads input() (texture_a), so clear that — not output().
+                render_context.begin_tracked_render_pass(RenderPassDescriptor {
+                    label: Some("voronoi_clear"),
+                    color_attachments: &[Some(RenderPassColorAttachment {
+                        view: &voronoi_texture.input().default_view,
+                        resolve_target: None,
+                        ops: Operations {
+                            load: LoadOp::Clear(LinearRgba::NONE.into()),
+                            store: StoreOp::Store,
+                        },
+                        depth_slice: None,
+                    })],
+                    ..default()
+                });
+            }
             return Ok(());
         }
 
@@ -222,7 +246,7 @@ impl ViewNode for VoronoiDrawNode {
             step /= 2;
         }
 
-        // Addicional pass with step = 1 to improve accuracy
+        // 1+JFA: extra step=1 pass to fix boundary errors from large-step passes.
         run_flood_pass(
             world,
             render_context,
@@ -230,6 +254,19 @@ impl ViewNode for VoronoiDrawNode {
             &mut voronoi_texture,
             UVec2::new(1, 1),
         );
+
+        // Light pass bind group reads texture_a (created with flip=false).
+        // If the result landed in texture_b (odd total passes), one more
+        // step=1 pass moves it back to A.
+        if voronoi_texture.flip {
+            run_flood_pass(
+                world,
+                render_context,
+                camera,
+                &mut voronoi_texture,
+                UVec2::new(1, 1),
+            );
+        }
 
         Ok(())
     }
